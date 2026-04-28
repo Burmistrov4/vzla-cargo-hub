@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://vzla-cargo-hub-backend-production.up.railway.app";
 const TOURISM_URL = "https://sites.google.com/view/venezuela-rutas-y-sabores?usp=sharing";
 
 type CourierCode = "" | "owc" | "zoom";
@@ -23,6 +23,10 @@ type RestrictedItemMatch = {
 type QuoteBreakdown = {
     freight_usd: number;
     freight_ves: number;
+    protection_usd: number;
+    protection_ves: number;
+    consolidation_usd: number;
+    consolidation_ves: number;
     insurance_usd: number;
     insurance_ves: number;
     customs_tax_usd: number;
@@ -122,6 +126,8 @@ type FormState = {
     use_insurance: boolean;
     use_purchase_by_order: boolean;
     apply_provisional_customs: boolean;
+    consolidated: boolean;
+    consolidated_package_count: number;
 };
 
 type NumericField =
@@ -134,7 +140,8 @@ type NumericField =
     | "height_in"
     | "total_same_item_qty"
     | "tracking_count"
-    | "hold_days";
+    | "hold_days"
+    | "consolidated_package_count";
 
 const initialForm: FormState = {
     courier_code: "",
@@ -158,11 +165,17 @@ const initialForm: FormState = {
     use_insurance: false,
     use_purchase_by_order: false,
     apply_provisional_customs: false,
+    consolidated: false,
+    consolidated_package_count: 2,
 };
 
 const EMPTY_BREAKDOWN: QuoteBreakdown = {
     freight_usd: 0,
     freight_ves: 0,
+    protection_usd: 0,
+    protection_ves: 0,
+    consolidation_usd: 0,
+    consolidation_ves: 0,
     insurance_usd: 0,
     insurance_ves: 0,
     customs_tax_usd: 0,
@@ -510,6 +523,10 @@ function normalizeQuoteResponse(input: unknown): QuoteResponse {
             breakdown: {
                 freight_usd: safeNumber(breakdown.freight_usd),
                 freight_ves: safeNumber(breakdown.freight_ves),
+                protection_usd: safeNumber(breakdown.protection_usd),
+                protection_ves: safeNumber(breakdown.protection_ves),
+                consolidation_usd: safeNumber(breakdown.consolidation_usd),
+                consolidation_ves: safeNumber(breakdown.consolidation_ves),
                 insurance_usd: safeNumber(breakdown.insurance_usd),
                 insurance_ves: safeNumber(breakdown.insurance_ves),
                 customs_tax_usd: safeNumber(breakdown.customs_tax_usd),
@@ -560,6 +577,7 @@ export default function Home() {
     const [owcRefreshing, setOwcRefreshing] = useState(false);
     const [owcMessage, setOwcMessage] = useState("");
 
+    const isZoom = form.courier_code === "zoom";
     const restrictedCount = result?.restricted_matches.length ?? 0;
 
     const customsTriggeredByValue = Number(form.declared_value_usd) > 200;
@@ -687,20 +705,36 @@ export default function Home() {
 
     useEffect(() => {
         const controller = new AbortController();
-        loadExchangeRate(controller.signal);
-        return () => controller.abort();
+        const timeoutId = window.setTimeout(() => {
+            void loadExchangeRate(controller.signal);
+        }, 0);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, []);
 
     useEffect(() => {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => {
+            if (form.courier_code !== "owc") {
+                setOwcRules(null);
+                setOwcMessage("");
+                return;
+            }
+
+            void loadOwcRules(form.region, controller.signal);
+        }, 0);
+
         if (form.courier_code !== "owc") {
-            setOwcRules(null);
-            setOwcMessage("");
-            return;
+            return () => window.clearTimeout(timeoutId);
         }
 
-        const controller = new AbortController();
-        loadOwcRules(form.region, controller.signal);
-        return () => controller.abort();
+        return () => {
+            window.clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, [form.courier_code, form.region]);
 
     function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -751,6 +785,35 @@ export default function Home() {
             hold_mode: effectiveHoldMode,
             apply_provisional_customs: effectiveApplyProvisionalCustoms,
             items: [],
+            ...(isZoom
+                ? {
+                    service_type: "air",
+                    delivery_type: "office",
+                    region: "region_central",
+                    total_weight_lb: 0,
+                    total_volume_ft3: 0,
+                    length_in: 0,
+                    width_in: 0,
+                    height_in: 0,
+                    enable_handling_fee: false,
+                    enable_repack_fee: false,
+                    compactation_requested: false,
+                    hold_mode: "none",
+                    hold_days: 0,
+                    use_insurance: false,
+                    use_purchase_by_order: false,
+                    apply_provisional_customs: false,
+                    zoom_service: "international_locker",
+                    origin_country: "US",
+                    destination_country: "VE",
+                    shipment_kind: "merchandise",
+                    use_protection: true,
+                    consolidated: form.consolidated,
+                    consolidated_package_count: form.consolidated
+                        ? form.consolidated_package_count
+                        : 1,
+                }
+                : {}),
         };
     }
 
@@ -1184,7 +1247,7 @@ export default function Home() {
                             <label className="space-y-2">
                                 <span className="text-sm font-medium text-slate-700">Courier</span>
                                 <select
-                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
+                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
                                     value={form.courier_code}
                                     onChange={(e) => {
                                         const nextCourier = e.target.value as CourierCode;
@@ -1193,9 +1256,13 @@ export default function Home() {
                                             ...prev,
                                             courier_code: nextCourier,
                                             service_type:
-                                                nextCourier === "zoom" && prev.service_type === "sea"
+                                                nextCourier === "zoom"
                                                     ? "air"
                                                     : prev.service_type,
+                                            delivery_type:
+                                                nextCourier === "zoom" ? "office" : prev.delivery_type,
+                                            region:
+                                                nextCourier === "zoom" ? "region_central" : prev.region,
                                         }));
                                     }}
                                 >
@@ -1206,13 +1273,16 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <span className="text-sm font-medium text-slate-700">Servicio</span>
+                                <span className="text-sm font-medium text-slate-700">
+                                    {isZoom ? "Servicio Zoom" : "Servicio"}
+                                </span>
                                 <select
-                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
+                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
                                     value={effectiveServiceType}
                                     onChange={(e) =>
                                         updateForm("service_type", e.target.value as ServiceType)
                                     }
+                                    disabled={isZoom}
                                 >
                                     <option value="">Selecciona un servicio</option>
                                     <option value="air">Aéreo</option>
@@ -1222,6 +1292,7 @@ export default function Home() {
                                 </select>
                             </label>
 
+                            {!isZoom ? (
                             <label className="space-y-2">
                                 <span className="text-sm font-medium text-slate-700">Región</span>
                                 <select
@@ -1236,19 +1307,21 @@ export default function Home() {
                                     <option value="resto_pais">Resto del país</option>
                                 </select>
                             </label>
+                            ) : null}
 
                             <label className="space-y-2">
                                 <span className="text-sm font-medium text-slate-700">
-                                    Delivery type
+                                    {isZoom ? "Entrega" : "Delivery type"}
                                 </span>
                                 <select
-                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
+                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
                                     value={form.delivery_type}
+                                    disabled={isZoom}
                                     onChange={(e) =>
                                         updateForm("delivery_type", e.target.value as DeliveryType)
                                     }
                                 >
-                                    <option value="office">Office</option>
+                                    <option value="office">{isZoom ? "Oficina" : "Office"}</option>
                                     <option value="delivery">Delivery</option>
                                     <option value="home">Home</option>
                                 </select>
@@ -1272,18 +1345,63 @@ export default function Home() {
 
                             <label className="space-y-2">
                                 <span className="text-sm font-medium text-slate-700">
-                                    Peso total (lb)
+                                    {isZoom ? "Peso fisico (kg)" : "Peso total (lb)"}
                                 </span>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
-                                    value={form.total_weight_lb}
-                                    onChange={(e) => setNumberField("total_weight_lb", e.target.value)}
+                                    value={isZoom ? form.total_weight_kg : form.total_weight_lb}
+                                    onChange={(e) =>
+                                        setNumberField(
+                                            isZoom ? "total_weight_kg" : "total_weight_lb",
+                                            e.target.value
+                                        )
+                                    }
                                 />
                             </label>
 
+                            {isZoom ? (
+                                <>
+                                    <label className="space-y-2">
+                                        <span className="text-sm font-medium text-slate-700">
+                                            Consolidar encomiendas
+                                        </span>
+                                        <select
+                                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
+                                            value={form.consolidated ? "yes" : "no"}
+                                            onChange={(e) =>
+                                                updateForm("consolidated", e.target.value === "yes")
+                                            }
+                                        >
+                                            <option value="no">No</option>
+                                            <option value="yes">Si</option>
+                                        </select>
+                                    </label>
+
+                                    {form.consolidated ? (
+                                        <label className="space-y-2">
+                                            <span className="text-sm font-medium text-slate-700">
+                                                Cantidad de encomiendas
+                                            </span>
+                                            <input
+                                                type="number"
+                                                min="2"
+                                                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
+                                                value={form.consolidated_package_count}
+                                                onChange={(e) =>
+                                                    setNumberField(
+                                                        "consolidated_package_count",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                        </label>
+                                    ) : null}
+                                </>
+                            ) : (
+                            <>
                             <label className="space-y-2">
                                 <span className="text-sm font-medium text-slate-700">Largo (in)</span>
                                 <input
@@ -1347,8 +1465,11 @@ export default function Home() {
                                     }
                                 />
                             </label>
+                            </>
+                            )}
                         </div>
 
+                        {!isZoom ? (
                         <details className="mt-6 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
                             <summary className="cursor-pointer text-lg font-semibold text-slate-900">
                                 Opciones avanzadas
@@ -1465,6 +1586,7 @@ export default function Home() {
                                 </div>
                             ) : null}
                         </details>
+                        ) : null}
 
                         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                             <button
@@ -1771,12 +1893,29 @@ export default function Home() {
                                     usd={resultBreakdown.handling_usd}
                                     tone="indigo"
                                 />
-                                <BreakdownRow
-                                    label="Seguro"
-                                    ves={resultBreakdown.insurance_ves}
-                                    usd={resultBreakdown.insurance_usd}
-                                    tone="emerald"
-                                />
+                                {isZoom ? (
+                                    <>
+                                        <BreakdownRow
+                                            label="Proteccion"
+                                            ves={resultBreakdown.protection_ves}
+                                            usd={resultBreakdown.protection_usd}
+                                            tone="emerald"
+                                        />
+                                        <BreakdownRow
+                                            label="Consolidacion"
+                                            ves={resultBreakdown.consolidation_ves}
+                                            usd={resultBreakdown.consolidation_usd}
+                                            tone="violet"
+                                        />
+                                    </>
+                                ) : (
+                                    <BreakdownRow
+                                        label="Seguro"
+                                        ves={resultBreakdown.insurance_ves}
+                                        usd={resultBreakdown.insurance_usd}
+                                        tone="emerald"
+                                    />
+                                )}
                                 <BreakdownRow
                                     label="Impuestos"
                                     ves={resultBreakdown.customs_tax_ves}
