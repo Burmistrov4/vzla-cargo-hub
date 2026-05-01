@@ -102,8 +102,54 @@ type OwcRulesResponse = {
         correspondence_rate_ves: number;
         handling_fee_ves: number;
     };
+    freshness?: {
+        stale?: boolean;
+        reasons?: string[];
+        oldest_updated_at?: string | null;
+        refresh_attempted?: boolean;
+        refresh_succeeded?: boolean;
+        refresh_error?: string | null;
+        message?: string | null;
+    };
 };
 
+type OwcRestrictedItemMatch = {
+    item_name: string;
+    restriction_level: string;
+    display_level?: string | null;
+    action?: string | null;
+    matched_input: string;
+    match_type?: string | null;
+    confidence?: number | null;
+    category_id?: string | null;
+    category_label?: string | null;
+    reason?: string | null;
+    notes?: string | null;
+    user_message?: string | null;
+    recommendation?: string | null;
+    examples?: string[];
+    source_url?: string | null;
+    courier_id?: string | null;
+};
+
+type OwcRestrictedItemsResponse = {
+    query: string;
+    normalized_query?: string;
+    courier_code: string;
+    matches: OwcRestrictedItemMatch[];
+    matched_categories?: Array<{
+        id: string;
+        label: string;
+        level_hint?: string;
+        examples?: string[];
+        user_message?: string | null;
+        recommendation?: string | null;
+    }>;
+    expanded_terms?: string[];
+    status?: string;
+    message: string;
+    source_url?: string | null;
+};
 type FormState = {
     courier_code: CourierCode;
     service_type: ServiceType;
@@ -576,6 +622,11 @@ export default function Home() {
     const [owcRulesLoading, setOwcRulesLoading] = useState(false);
     const [owcRefreshing, setOwcRefreshing] = useState(false);
     const [owcMessage, setOwcMessage] = useState("");
+    const [owcItemQuery, setOwcItemQuery] = useState("");
+    const [owcRestrictedItems, setOwcRestrictedItems] =
+        useState<OwcRestrictedItemsResponse | null>(null);
+    const [owcRestrictedLoading, setOwcRestrictedLoading] = useState(false);
+    const [owcRestrictedError, setOwcRestrictedError] = useState("");
 
     const isZoom = form.courier_code === "zoom";
     const restrictedCount = result?.restricted_matches.length ?? 0;
@@ -616,7 +667,10 @@ export default function Home() {
         try {
             setBcvLoading(true);
 
-            let res = await fetch(`${API_BASE}/exchange-rate/latest`, { signal });
+            let res = await fetch(
+                `${API_BASE}/exchange-rate/latest?refresh_if_stale=true`,
+                { signal }
+            );
 
             if (!res.ok) {
                 const refreshRes = await fetch(`${API_BASE}/exchange-rate/refresh-bcv`, {
@@ -653,12 +707,14 @@ export default function Home() {
         }
     }
 
+
     async function loadOwcRules(region: RegionType, signal?: AbortSignal) {
         try {
             setOwcRulesLoading(true);
-            const res = await fetch(`${API_BASE}/courier-rules/owc?region=${region}`, {
-                signal,
-            });
+            const res = await fetch(
+                `${API_BASE}/courier-rules/owc?region=${region}&refresh_if_stale=true`,
+                { signal }
+            );
 
             if (!res.ok) {
                 throw new Error("No se pudo cargar el tarifario OWC del sistema");
@@ -666,6 +722,13 @@ export default function Home() {
 
             const data = await res.json();
             setOwcRules(data as OwcRulesResponse);
+
+            const freshnessMessage =
+                typeof data?.freshness?.message === "string"
+                    ? data.freshness.message
+                    : "Tarifario OWC cargado correctamente.";
+
+            setOwcMessage(freshnessMessage);
         } catch (err) {
             if ((err as Error).name !== "AbortError") {
                 console.error("Error cargando courier-rules/owc:", err);
@@ -689,14 +752,18 @@ export default function Home() {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data?.detail ?? "No se pudieron actualizar las tarifas OWC");
+                throw new Error(
+                    data?.detail ?? "No se pudieron actualizar las tarifas OWC"
+                );
             }
 
             setOwcMessage("Tarifario OWC actualizado correctamente.");
             await loadOwcRules(form.region);
         } catch (err) {
             const message =
-                err instanceof Error ? err.message : "Error al actualizar las tarifas OWC";
+                err instanceof Error
+                    ? err.message
+                    : "Error al actualizar las tarifas OWC";
             setOwcMessage(message);
         } finally {
             setOwcRefreshing(false);
@@ -705,6 +772,7 @@ export default function Home() {
 
     useEffect(() => {
         const controller = new AbortController();
+
         const timeoutId = window.setTimeout(() => {
             void loadExchangeRate(controller.signal);
         }, 0);
@@ -717,6 +785,7 @@ export default function Home() {
 
     useEffect(() => {
         const controller = new AbortController();
+
         const timeoutId = window.setTimeout(() => {
             if (form.courier_code !== "owc") {
                 setOwcRules(null);
@@ -727,16 +796,65 @@ export default function Home() {
             void loadOwcRules(form.region, controller.signal);
         }, 0);
 
-        if (form.courier_code !== "owc") {
-            return () => window.clearTimeout(timeoutId);
-        }
-
         return () => {
             window.clearTimeout(timeoutId);
             controller.abort();
         };
     }, [form.courier_code, form.region]);
 
+    useEffect(() => {
+        const controller = new AbortController();
+        const cleanQuery = form.courier_code === "owc" ? owcItemQuery.trim() : "";
+
+        const timeoutId = window.setTimeout(async () => {
+            if (!cleanQuery) {
+                setOwcRestrictedItems(null);
+                setOwcRestrictedError("");
+                setOwcRestrictedLoading(false);
+                return;
+            }
+
+            try {
+                setOwcRestrictedLoading(true);
+                setOwcRestrictedError("");
+
+                const res = await fetch(
+                    `${API_BASE}/couriers/owc/restricted-items?q=${encodeURIComponent(
+                        cleanQuery
+                    )}`,
+                    { signal: controller.signal }
+                );
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(
+                        typeof data?.detail === "string"
+                            ? data.detail
+                            : "No se pudo verificar el artículo en OWC."
+                    );
+                }
+
+                setOwcRestrictedItems(data as OwcRestrictedItemsResponse);
+            } catch (err) {
+                if ((err as Error).name !== "AbortError") {
+                    setOwcRestrictedItems(null);
+                    setOwcRestrictedError(
+                        err instanceof Error
+                            ? err.message
+                            : "Error verificando artículos OWC."
+                    );
+                }
+            } finally {
+                setOwcRestrictedLoading(false);
+            }
+        }, cleanQuery ? 450 : 0);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            controller.abort();
+        };
+    }, [form.courier_code, owcItemQuery]);
     function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
         setForm((prev) => ({
             ...prev,
@@ -1264,6 +1382,13 @@ export default function Home() {
                                             region:
                                                 nextCourier === "zoom" ? "region_central" : prev.region,
                                         }));
+
+                                        if (nextCourier !== "owc") {
+                                            setOwcItemQuery("");
+                                            setOwcRestrictedItems(null);
+                                            setOwcRestrictedError("");
+                                            setOwcRestrictedLoading(false);
+                                        }
                                     }}
                                 >
                                     <option value="">Selecciona un courier</option>
@@ -1468,6 +1593,147 @@ export default function Home() {
                             </>
                             )}
                         </div>
+
+                        {form.courier_code === "owc" && (
+                            <div className="mt-6 rounded-[2rem] border border-slate-200 bg-slate-50 p-5">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-950">
+                                            Verificador de artículos OWC
+                                        </h3>
+                                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                                            Consulta si el artículo aparece como prohibido, restringido o bajo
+                                            régimen especial según las reglas actuales de One Way Cargo.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-950 text-center text-[11px] font-black leading-3 text-white">
+                                        One
+                                        <br />
+                                        Way
+                                        <br />
+                                        Cargo
+                                    </div>
+                                </div>
+
+                                <label className="mt-5 block text-sm font-medium text-slate-900">
+                                    ¿Qué estás enviando?
+                                </label>
+
+                                <input
+                                    value={owcItemQuery}
+                                    onChange={(e) => setOwcItemQuery(e.target.value)}
+                                    placeholder="Ej: celular, teléfono, laptop, jeans, perfume, pastillas..."
+                                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base outline-none transition focus:border-slate-900 focus:ring-4 focus:ring-slate-200"
+                                />
+
+                                {owcRestrictedLoading && (
+                                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-600">
+                                        Buscando en reglas OWC...
+                                    </div>
+                                )}
+
+                                {owcRestrictedError && (
+                                    <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                        {owcRestrictedError}
+                                    </div>
+                                )}
+
+                                {!owcRestrictedLoading &&
+                                    !owcRestrictedError &&
+                                    owcItemQuery.trim() &&
+                                    owcRestrictedItems && (
+                                        <div className="mt-4 space-y-3">
+                                            {owcRestrictedItems.matches.length > 0 ? (
+                                                owcRestrictedItems.matches.map((item, index) => {
+                                                    const level = String(item.restriction_level || "").toLowerCase();
+                                                    const isProhibited = level.includes("prohibited") || item.action === "block";
+                                                    const displayLevel = item.display_level ?? (isProhibited ? "Prohibido" : "Régimen especial");
+                                                    const sourceUrl = item.source_url ?? owcRestrictedItems.source_url ?? "https://onewaycargo.net/articulos-prohibidos";
+
+                                                    return (
+                                                        <div
+                                                            key={`${item.item_name}-${index}`}
+                                                            className={`rounded-2xl border p-4 ${isProhibited
+                                                                    ? "border-red-300 bg-red-50"
+                                                                    : "border-amber-300 bg-amber-50"
+                                                                }`}
+                                                        >
+                                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                                <div>
+                                                                    <p className="font-black text-slate-950">
+                                                                        {item.item_name}
+                                                                    </p>
+
+                                                                    <p className="mt-2 text-sm text-slate-800">
+                                                                        <span className="font-bold">Razón:</span>{" "}
+                                                                        {item.reason || item.category_label || "Regla especial OWC"}
+                                                                    </p>
+
+                                                                    {item.notes && (
+                                                                        <p className="mt-1 text-sm text-slate-800">
+                                                                            <span className="font-bold">Notas:</span>{" "}
+                                                                            {item.notes}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+
+                                                                <span
+                                                                    className={`rounded-full px-3 py-1 text-xs font-black ${isProhibited
+                                                                            ? "bg-red-100 text-red-700 ring-1 ring-red-300"
+                                                                            : "bg-amber-100 text-amber-700 ring-1 ring-amber-300"
+                                                                        }`}
+                                                                >
+                                                                    {displayLevel}
+                                                                </span>
+                                                            </div>
+
+                                                            <p className="mt-3 text-sm leading-6 text-slate-700">
+                                                                {item.user_message ||
+                                                                    (isProhibited
+                                                                        ? "Este artículo aparece como no permitido por OWC. No se recomienda enviarlo sin confirmación oficial del courier."
+                                                                        : "Este artículo puede requerir validación previa. Consulta con OWC antes de enviarlo, especialmente si son varias unidades, alto valor o uso comercial.")}
+                                                            </p>
+
+                                                            {item.recommendation ? (
+                                                                <p className="mt-2 text-sm leading-6 text-slate-700">
+                                                                    <span className="font-bold">Recomendación:</span>{" "}
+                                                                    {item.recommendation}
+                                                                </p>
+                                                            ) : null}
+
+                                                            {item.examples?.length ? (
+                                                                <p className="mt-2 text-xs leading-6 text-slate-600">
+                                                                    Ejemplos relacionados: {item.examples.join(", ")}
+                                                                </p>
+                                                            ) : null}
+
+                                                            <a
+                                                                href={sourceUrl}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="mt-3 inline-flex text-sm font-black text-slate-900 underline decoration-slate-300 underline-offset-4"
+                                                            >
+                                                                Ver fuente OWC
+                                                            </a>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
+                                                    <p className="font-black">
+                                                        Sin coincidencias en reglas OWC actuales
+                                                    </p>
+                                                    <p className="mt-1">
+                                                        No se encontraron restricciones para “{owcItemQuery}”.
+                                                        Esto no garantiza que esté permitido; verifica manualmente si tienes dudas.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                            </div>
+                        )}
 
                         {!isZoom ? (
                         <details className="mt-6 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
