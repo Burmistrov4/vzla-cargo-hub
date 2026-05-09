@@ -418,11 +418,11 @@ function MetricCard({
         accent === "default" ? "text-slate-500" : "text-inherit/80";
 
     return (
-        <div className={`rounded-3xl border p-5 shadow-sm ${accentClasses}`}>
-            <p className={`text-sm ${titleClasses}`}>{title}</p>
-            <p className="mt-2 text-3xl font-black tracking-tight">{value}</p>
+        <div className={`rounded-3xl border p-4 sm:p-5 lg:p-6 shadow-sm ${accentClasses} min-w-0 break-words`}>
+            <p className={`text-xs sm:text-sm ${titleClasses}`}>{title}</p>
+            <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black tracking-tight">{value}</p>
             {subtitle ? (
-                <p className={`mt-2 text-xs ${subtitleClasses}`}>{subtitle}</p>
+                <p className={`mt-1 sm:mt-2 text-[10px] sm:text-xs ${subtitleClasses}`}>{subtitle}</p>
             ) : null}
         </div>
     );
@@ -518,7 +518,7 @@ function OptionCard({
 
     return (
         <div
-            className={`flex items-start gap-3 rounded-2xl border p-4 transition ${disabled
+            className={`flex items-start gap-2.5 sm:gap-3 rounded-2xl border p-3.5 sm:p-4 transition ${disabled
                     ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-75"
                     : checked
                         ? "cursor-pointer border-slate-900 bg-slate-50"
@@ -533,18 +533,18 @@ function OptionCard({
                 disabled={disabled}
                 onChange={(e) => onChange(e.target.checked)}
             />
-            <div>
+            <div className="min-w-0">
                 <div className="flex items-center gap-2">
                     <label
                         htmlFor={inputId}
-                        className={`text-sm font-semibold text-slate-900 ${disabled ? "cursor-not-allowed" : "cursor-pointer"
+                        className={`text-sm font-semibold text-slate-900 truncate ${disabled ? "cursor-not-allowed" : "cursor-pointer"
                             }`}
                     >
                         {title}
                     </label>
                     <HelpTooltip text={help} label={`Ayuda sobre ${title}`} align={helpAlign} />
                 </div>
-                <p className="mt-1 text-xs leading-6 text-slate-500">{description}</p>
+                <p className="mt-1 text-[11px] sm:text-xs leading-5 sm:leading-6 text-slate-500 line-clamp-3 sm:line-clamp-none">{description}</p>
             </div>
         </div>
     );
@@ -572,10 +572,10 @@ function BreakdownRow({
     const active = Math.abs(ves) > 0 || Math.abs(usd) > 0;
 
     return (
-        <div className="grid grid-cols-[1.1fr_0.7fr_0.7fr] gap-3 border-b border-slate-200 py-3 text-sm">
-            <div className="flex items-center">
+        <div className="grid grid-cols-[1.1fr_0.7fr_0.7fr] gap-2 sm:gap-3 border-b border-slate-200 py-2 sm:py-3 text-[13px] sm:text-sm min-w-0">
+            <div className="flex items-center min-w-0">
                 <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${toneClasses(
+                    className={`inline-flex rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-semibold truncate ${toneClasses(
                         tone,
                         active
                     )}`}
@@ -584,13 +584,13 @@ function BreakdownRow({
                 </span>
             </div>
             <div
-                className={`text-right ${active ? "font-semibold text-slate-800" : "text-slate-500"
+                className={`text-right truncate ${active ? "font-semibold text-slate-800" : "text-slate-500"
                     }`}
             >
                 {formatMoneyBs(ves, 0)}
             </div>
             <div
-                className={`text-right ${active ? "font-semibold text-slate-800" : "text-slate-500"
+                className={`text-right truncate ${active ? "font-semibold text-slate-800" : "text-slate-500"
                     }`}
             >
                 {formatMoneyUsd(usd, 2)}
@@ -1630,92 +1630,92 @@ export default function Home() {
     const showLongHoldNotice = safeNumber(form.hold_days) > 30;
 
     return (
-        <main className="min-h-screen bg-slate-100">
-            <div className="mx-auto max-w-7xl px-6 py-10">
-                <div className="mb-8 relative overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white px-6 py-8 md:px-10 md:py-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <main className="min-h-screen bg-slate-100 overflow-x-hidden">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10">
+                <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-3xl sm:rounded-[2.5rem] border border-slate-200 bg-white px-5 py-6 md:px-10 md:py-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                     <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl pointer-events-none"></div>
                     <div className="absolute -right-20 -bottom-20 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none"></div>
 
                     <div className="relative mb-6 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                        <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] sm:text-xs font-semibold text-white shadow-sm">
                             Motor OWC / Zoom
                         </span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
                             FastAPI + Next.js
                         </span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
                             Cálculo comercial
                         </span>
                     </div>
 
                     <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_270px] lg:items-end">
-                        <div>
-                            <h1 className="text-5xl font-black tracking-tight text-slate-950 drop-shadow-sm">
+                        <div className="min-w-0">
+                            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-950 drop-shadow-sm break-words">
                                 Vzla Cargo Hub
                             </h1>
 
-                            <p className="mt-4 max-w-3xl text-xl leading-9 text-slate-700">
+                            <p className="mt-3 sm:mt-4 max-w-3xl text-base sm:text-lg lg:text-xl leading-7 sm:leading-9 text-slate-700">
                                 Calcula envíos con reglas reales del courier, peso final,
                                 volumen visible y desglose detallado por tipo de cargo.
                             </p>
 
                             <div className="mt-6 flex flex-wrap gap-2">
-                                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
+                                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
                                     Courier: {courierLabel(form.courier_code)}
                                 </span>
-                                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
                                     Servicio: {serviceLabel(effectiveServiceType)}
                                 </span>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
                                     Región: {regionLabel(form.region)}
                                 </span>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
                                     Delivery: {deliveryLabel(form.delivery_type)}
                                 </span>
                             </div>
                         </div>
 
                         <div className="lg:self-end lg:pb-3">
-                            <div className="relative w-full overflow-hidden rounded-[2rem] bg-slate-900 px-6 py-5 text-white shadow-[0_10px_40px_rgba(15,23,42,0.4)] ring-1 ring-white/10">
+                            <div className="relative w-full overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] bg-slate-900 px-5 py-4 sm:px-6 sm:py-5 text-white shadow-[0_10px_40px_rgba(15,23,42,0.4)] ring-1 ring-white/10">
                                 <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-indigo-500/30 blur-2xl pointer-events-none"></div>
                                 <div className="relative">
-                                    <div className="text-sm uppercase tracking-wide text-slate-300">
+                                    <div className="text-[10px] sm:text-sm uppercase tracking-wide text-slate-300">
                                         Tasa BCV
                                     </div>
 
                                     {bcvLoading ? (
-                                        <div className="mt-4 flex items-center gap-3">
-                                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-400 border-t-white" />
-                                            <span className="text-lg font-semibold">Cargando...</span>
+                                        <div className="mt-3 flex items-center gap-3">
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-white" />
+                                            <span className="text-base font-semibold">Cargando...</span>
                                         </div>
                                     ) : (
-                                        <div className="mt-2 text-5xl font-black drop-shadow-sm">
+                                        <div className="mt-1 sm:mt-2 text-3xl sm:text-4xl lg:text-5xl font-black drop-shadow-sm">
                                             {bcvRate !== null && bcvRate > 0 ? formatNumber(bcvRate, 4, 4) : "N/D"}
                                         </div>
                                     )}
 
-                                    <div className="mt-2 text-sm text-slate-400 font-medium">USD → VES</div>
+                                    <div className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400 font-medium">USD → VES</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid gap-8 lg:grid-cols-[1.03fr_0.97fr] lg:items-start">
+                <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1.03fr_0.97fr] lg:items-start">
                     <form
                         onSubmit={handleSubmit}
-                        className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"
+                        className="rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-sm"
                     >
                         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                             <div>
-                                <h2 className="text-2xl font-bold text-slate-950">
+                                <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
                                     Formulario de cotización
                                 </h2>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                <p className="mt-1 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 text-slate-600">
                                     Completa los datos del paquete para estimar el costo del envío.
                                 </p>
                             </div>
-                            <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate">
+                            <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate w-full sm:w-auto">
                                 <div
                                     className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${
                                         viewMode === "simple" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
@@ -1727,7 +1727,7 @@ export default function Home() {
                                         setViewMode("simple");
                                         setChargesOpen(false);
                                     }}
-                                    className={`relative z-10 w-36 rounded-full py-2 text-sm font-semibold transition-colors duration-300 ${
+                                    className={`relative z-10 flex-1 sm:w-36 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
                                         viewMode === "simple" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
                                     }`}
                                 >
@@ -1739,7 +1739,7 @@ export default function Home() {
                                         setViewMode("advanced");
                                         setChargesOpen(true);
                                     }}
-                                    className={`relative z-10 w-36 rounded-full py-2 text-sm font-semibold transition-colors duration-300 ${
+                                    className={`relative z-10 flex-1 sm:w-36 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
                                         viewMode === "advanced" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
                                     }`}
                                 >
@@ -2219,7 +2219,7 @@ export default function Home() {
                                     reempaque, almacenaje, seguro o compra por encargo.
                                 </p>
 
-                                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                <div className="mt-5 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                                 <OptionCard
                                     title="Handling fee"
                                     description="Cargo operativo por guía o tracking recibido."
@@ -2280,7 +2280,7 @@ export default function Home() {
                                 />
                             </div>
 
-                            <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            <div className="mt-5 grid gap-4 grid-cols-1 sm:grid-cols-2">
                                 <label className="space-y-2">
                                     <FieldHelpLabel help="Hold mode solo afecta storage. General representa hold normal con storage después de 3 días. Repack representa una prealerta válida de reempaque con storage exonerado. No decide si se cobra Repack Fee.">
                                         Modo de storage / hold
@@ -2518,12 +2518,12 @@ export default function Home() {
                         ) : null}
                     </form>
 
-                    <section className="space-y-6 lg:sticky lg:top-8 pb-10">
+                    <section className="flex flex-col gap-6 sm:gap-8 lg:sticky lg:top-8 pb-10">
                         {form.courier_code === "owc" ? (
-                            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                            <div className="order-3 lg:order-1 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
                                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-950">
+                                        <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
                                             Tarifario OWC en sistema
                                         </h2>
                                         <p className="mt-1 text-sm text-slate-600">
@@ -2598,9 +2598,9 @@ export default function Home() {
                             </div>
                         ) : null}
 
-                        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                            <div className="mb-5">
-                                <h2 className="text-2xl font-bold text-slate-950">Resultado</h2>
+                        <div className="order-1 lg:order-2 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
+                            <div className="mb-4 sm:mb-5">
+                                <h2 className="text-xl sm:text-2xl font-bold text-slate-950">Resultado</h2>
                                 <p className="mt-2 text-sm leading-6 text-slate-600">
                                     Panel compacto con peso final, volumen visible, volumen real,
                                     base cobrable para storage y total estimado.
@@ -2627,7 +2627,7 @@ export default function Home() {
 
                             {result && visibleMetrics ? (
                                 <>
-                                    <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2">
                                         <MetricCard
                                             title="Peso final"
                                             value={formatNumber(visibleMetrics.pesoFinal, 2, 2)}
@@ -2798,10 +2798,10 @@ export default function Home() {
                         </div>
 
                         {result ? (
-                            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                            <div className="order-2 lg:order-3 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
                                 <div className="mb-4 flex items-center justify-between gap-3">
                                     <div>
-                                        <h3 className="text-2xl font-bold text-slate-950">Desglose</h3>
+                                        <h3 className="text-xl sm:text-2xl font-bold text-slate-950">Desglose</h3>
                                         <p className="mt-1 text-sm text-slate-600">
                                             Cada fila se resalta según el tipo de cargo y si tiene monto aplicado.
                                         </p>
@@ -2890,7 +2890,7 @@ export default function Home() {
                                     tone="slate"
                                 />
 
-                                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                <div className="mt-5 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                                     <MetricCard
                                         title="Total USD"
                                         value={formatMoneyUsd(result.quote.total_usd, 2)}
@@ -2920,9 +2920,9 @@ export default function Home() {
                     </section>
                 </div>
             </div>
-            <div className="mx-auto max-w-7xl px-6 pb-10">
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 md:p-10 shadow-sm mb-8">
-                    <h2 className="text-2xl font-bold text-slate-950 mb-6">Cómo usar Vzla Cargo Hub</h2>
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 pb-6 sm:pb-10">
+                <div className="rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-5 sm:p-6 md:p-10 shadow-sm mb-6 sm:mb-8">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-950 mb-4 sm:mb-6">Cómo usar Vzla Cargo Hub</h2>
                     
                     <div className="grid gap-8 md:grid-cols-2">
                         <div>
@@ -2961,13 +2961,13 @@ export default function Home() {
                 </div>
 
                 {/* Banner de turismo reubicado */}
-                <div className="relative rounded-[2rem] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-6 shadow-sm">
+                <div className="relative rounded-3xl sm:rounded-[2rem] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-5 sm:p-6 shadow-sm">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="max-w-3xl">
                             <div className="mb-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
                                 Turismo en Venezuela
                             </div>
-                            <h2 className="text-xl font-bold tracking-tight text-slate-950">
+                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-950">
                                 Apoya el turismo en los llanos venezolanos
                             </h2>
                             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -2990,7 +2990,7 @@ export default function Home() {
                 </div>
             </div>
 
-            <footer className="mt-10 rounded-[2rem] border border-slate-200 bg-white px-6 py-5 shadow-sm">
+            <footer className="mt-6 sm:mt-10 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white px-5 sm:px-6 py-4 sm:py-5 shadow-sm">
                 <div className="flex flex-col gap-2 text-center text-sm text-slate-600">
                     <p>
                         Copyright: Lorenzo V Roca, José Tarazón, Sleither Vásquez, Adrián Cedeño.
