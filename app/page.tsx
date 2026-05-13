@@ -65,6 +65,8 @@ type RawMetrics = {
     length_in_used?: number;
     width_in_used?: number;
     height_in_used?: number;
+    original_tracking_count?: number;
+    effective_handling_count?: number;
 };
 
 type QuoteEngineResult = {
@@ -348,7 +350,7 @@ function deliveryLabel(delivery: DeliveryType) {
 
 function holdModeLabel(mode: HoldMode) {
     if (mode === "general") return "Hold normal";
-    if (mode === "repack") return "Prealerta repack válida";
+    if (mode === "repack") return "Prealertar hold";
     return "Sin hold";
 }
 
@@ -418,11 +420,11 @@ function MetricCard({
         accent === "default" ? "text-slate-500" : "text-inherit/80";
 
     return (
-        <div className={`rounded-3xl border p-4 sm:p-5 lg:p-6 shadow-sm ${accentClasses} min-w-0 break-words`}>
-            <p className={`text-xs sm:text-sm ${titleClasses}`}>{title}</p>
-            <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black tracking-tight">{value}</p>
+        <div className={`rounded-3xl border p-3 sm:p-5 lg:p-6 shadow-sm ${accentClasses} min-w-0 break-words`}>
+            <p className={`text-[10px] sm:text-sm ${titleClasses}`}>{title}</p>
+            <p className="mt-1 sm:mt-2 text-lg sm:text-3xl font-black tracking-tight">{value}</p>
             {subtitle ? (
-                <p className={`mt-1 sm:mt-2 text-[10px] sm:text-xs ${subtitleClasses}`}>{subtitle}</p>
+                <p className={`mt-1 sm:mt-2 text-[9px] sm:text-xs ${subtitleClasses}`}>{subtitle}</p>
             ) : null}
         </div>
     );
@@ -572,10 +574,10 @@ function BreakdownRow({
     const active = Math.abs(ves) > 0 || Math.abs(usd) > 0;
 
     return (
-        <div className="grid grid-cols-[1.1fr_0.7fr_0.7fr] gap-2 sm:gap-3 border-b border-slate-200 py-2 sm:py-3 text-[13px] sm:text-sm min-w-0">
+        <div className="grid grid-cols-[1fr_0.75fr_0.75fr] gap-2 border-b border-slate-200 py-2 sm:py-3 text-[13px] sm:text-sm min-w-0">
             <div className="flex items-center min-w-0">
                 <span
-                    className={`inline-flex rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-semibold truncate ${toneClasses(
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-semibold whitespace-normal leading-tight text-left ${toneClasses(
                         tone,
                         active
                     )}`}
@@ -653,6 +655,8 @@ function normalizeQuoteResponse(input: unknown): QuoteResponse {
                 length_in_used: safeNumber(rawMetrics.length_in_used),
                 width_in_used: safeNumber(rawMetrics.width_in_used),
                 height_in_used: safeNumber(rawMetrics.height_in_used),
+                original_tracking_count: safeNumber(rawMetrics.original_tracking_count),
+                effective_handling_count: safeNumber(rawMetrics.effective_handling_count),
             },
             flags: Object.fromEntries(
                 Object.entries(flags).map(([key, value]) => [
@@ -735,11 +739,20 @@ export default function Home() {
     const [saveError, setSaveError] = useState("");
     const [saveMessage, setSaveMessage] = useState("");
     const [savedQuote, setSavedQuote] = useState<QuoteSaveResponse | null>(null);
-    const [rawResponse, setRawResponse] = useState("");
     const [lastQuoteSnapshot, setLastQuoteSnapshot] = useState<string | null>(null);
     const [numericDrafts, setNumericDrafts] = useState<
         Partial<Record<NumericField, string>>
     >({});
+    
+    const activeChargesSummary = useMemo(() => {
+        const active = [];
+        if (form.enable_handling_fee) active.push("Handling");
+        if (form.enable_repack_fee) active.push("Repack");
+        if (form.use_insurance) active.push("Seguro");
+        if (form.use_purchase_by_order) active.push("Compra");
+        if (Number(form.hold_days) > 0) active.push(`Hold ${form.hold_days}d`);
+        return active.join(", ");
+    }, [form]);
 
     const [bcvRate, setBcvRate] = useState<number | null>(null);
     const [bcvLoading, setBcvLoading] = useState(true);
@@ -978,8 +991,24 @@ export default function Home() {
                 [key]: value,
             };
 
-            if (key === "hold_mode" && value !== "repack") {
-                next.repack_prealert_valid = false;
+            if (key === "hold_mode") {
+                if (value === "repack") {
+                    next.repack_prealert_valid = true;
+                    next.enable_repack_fee = true;
+                    if (next.hold_days <= 0) next.hold_days = 1;
+                } else if (value === "general") {
+                    next.repack_prealert_valid = false;
+                    if (next.hold_days <= 0) next.hold_days = 1;
+                } else if (value === "none") {
+                    next.hold_days = 0;
+                    next.repack_prealert_valid = false;
+                }
+            }
+
+            if (key === "repack_prealert_valid") {
+                if (value === true) {
+                    next.enable_repack_fee = true;
+                }
             }
 
             return next;
@@ -1209,7 +1238,6 @@ export default function Home() {
             setSavedQuote(null);
             setResult(normalizeQuoteResponse(data));
             setLastQuoteSnapshot(quoteSnapshot);
-            setRawResponse(JSON.stringify(data, null, 2));
         } catch (err) {
             const message =
                 err instanceof Error ? err.message : "Ocurrió un error inesperado";
@@ -1262,7 +1290,6 @@ export default function Home() {
             setSaveError("");
             setResult(normalizeQuoteResponse(saved));
             setLastQuoteSnapshot(quoteSnapshot);
-            setRawResponse(JSON.stringify(saved, null, 2));
         } catch (err) {
             const message =
                 err instanceof Error ? err.message : "Ocurrió un error al guardar";
@@ -1433,72 +1460,50 @@ export default function Home() {
 
         const breakdown = result.quote?.breakdown ?? EMPTY_BREAKDOWN;
         const metrics = result.quote?.raw_metrics ?? EMPTY_RAW_METRICS;
+        const flags = result.quote?.flags ?? {};
 
-        const activeCharges = [
-            breakdown.freight_ves > 0
-                ? `• Flete: ${formatMoneyBs(breakdown.freight_ves, 2)} | ${formatMoneyUsd(breakdown.freight_usd, 2)}`
-                : null,
-            breakdown.handling_ves > 0
-                ? `• Handling: ${formatMoneyBs(breakdown.handling_ves, 2)} | ${formatMoneyUsd(breakdown.handling_usd, 2)}`
-                : null,
-            breakdown.insurance_ves > 0
-                ? `• Seguro: ${formatMoneyBs(breakdown.insurance_ves, 2)} | ${formatMoneyUsd(breakdown.insurance_usd, 2)}`
-                : null,
-            breakdown.customs_tax_ves > 0
-                ? `• Impuestos: ${formatMoneyBs(breakdown.customs_tax_ves, 2)} | ${formatMoneyUsd(breakdown.customs_tax_usd, 2)}`
-                : null,
-            breakdown.repack_ves > 0
-                ? `• Repack: ${formatMoneyBs(breakdown.repack_ves, 2)} | ${formatMoneyUsd(breakdown.repack_usd, 2)}`
-                : null,
-            breakdown.storage_ves > 0
-                ? `• Storage: ${formatMoneyBs(breakdown.storage_ves, 2)} | ${formatMoneyUsd(breakdown.storage_usd, 2)}`
-                : null,
-            breakdown.purchase_service_ves > 0
-                ? `• Compra por encargo: ${formatMoneyBs(breakdown.purchase_service_ves, 2)} | ${formatMoneyUsd(breakdown.purchase_service_usd, 2)}`
-                : null,
-            breakdown.compactation_fee_ves > 0
-                ? `• Compactación: ${formatMoneyBs(breakdown.compactation_fee_ves, 2)} | ${formatMoneyUsd(breakdown.compactation_fee_usd, 2)}`
-                : null,
-            breakdown.packaging_ves > 0
-                ? `• Packaging: ${formatMoneyBs(breakdown.packaging_ves, 2)} | ${formatMoneyUsd(breakdown.packaging_usd, 2)}`
-                : null,
-        ].filter(Boolean) as string[];
+        const effectiveHandlingCount = metrics.effective_handling_count ?? form.tracking_count;
+        const originalTrackingCount = metrics.original_tracking_count ?? form.tracking_count;
 
         const lines = [
-            "Hola, quiero compartir esta cotización:",
+            "Hola, comparto esta cotización generada en Vzla Cargo Hub para revisión:",
             "",
-            `Courier: ${result.courier}`,
+            "📦 *DATOS DEL ENVÍO*",
+            `Courier: ${courierLabel(form.courier_code)}`,
             `Servicio: ${serviceLabel(effectiveServiceType)}`,
             `Región: ${regionLabel(form.region)}`,
-            `Delivery type: ${deliveryLabel(form.delivery_type)}`,
+            `Delivery: ${deliveryLabel(form.delivery_type)}`,
+            `Tracking originales: ${originalTrackingCount}`,
+            `Handling cobrable: ${effectiveHandlingCount}`,
+            flags.handling_consolidated_by_repack_prealert ? "Motivo: consolidado por prealerta/reempaque válido" : null,
             "",
+            "📐 *MEDIDAS Y PESO*",
             `Peso final: ${formatNumber(result.quote.chargeable_units_display, 2, 2)} ${result.quote.charge_unit}`,
             `Volumen visible: ${formatNumber(metrics.display_volume_ft3, 2, 2)} ft³`,
             `Volumen real: ${formatNumber(metrics.raw_volume_ft3, 2, 2)} ft³`,
-            effectiveServiceType === "sea" ? `Base flete marítimo: ${formatNumber(metrics.sea_freight_volume_ft3 ?? 0, 2, 2)} ft³` : null,
             `Base storage: ${formatNumber(metrics.storage_chargeable_ft3, 2, 2)} ft³`,
             "",
-            "Cargos aplicados:",
-            ...(activeCharges.length > 0 ? activeCharges : ["• Sin cargos adicionales"]),
+            "💵 *DESGLOSE ESTIMADO*",
+            `Flete: ${formatMoneyBs(breakdown.freight_ves, 2)} | ${formatMoneyUsd(breakdown.freight_usd, 2)}`,
+            `Handling x${effectiveHandlingCount}: ${formatMoneyBs(breakdown.handling_ves, 2)} | ${formatMoneyUsd(breakdown.handling_usd, 2)}`,
+            breakdown.repack_usd > 0 ? `Repack fee único: ${formatMoneyBs(breakdown.repack_ves, 2)} | ${formatMoneyUsd(breakdown.repack_usd, 2)}` : null,
+            breakdown.storage_usd > 0 ? `Storage: ${formatMoneyBs(breakdown.storage_ves, 2)} | ${formatMoneyUsd(breakdown.storage_usd, 2)}` : null,
+            breakdown.insurance_usd > 0 ? `Seguro: ${formatMoneyBs(breakdown.insurance_ves, 2)} | ${formatMoneyUsd(breakdown.insurance_usd, 2)}` : null,
+            breakdown.customs_tax_usd > 0 ? `Impuestos: ${formatMoneyBs(breakdown.customs_tax_ves, 2)} | ${formatMoneyUsd(breakdown.customs_tax_usd, 2)}` : null,
             "",
-            `Total USD: ${formatMoneyUsd(result.quote.total_usd, 2)}`,
+            "✅ *TOTAL ESTIMADO*",
+            `*Total USD: ${formatMoneyUsd(result.quote.total_usd, 2)}*`,
             `Total VES: ${formatMoneyBs(result.quote.total_ves, 2)}`,
             `Tasa BCV usada: ${formatNumber(result.exchange_rate_used, 4, 4)}`,
             "",
-            `Valor declarado USD: ${formatMoneyUsd(form.declared_value_usd, 2)}`,
-            `Tracking count: ${formatNumber(form.tracking_count, 0, 0)}`,
-            `Cantidad total del mismo artículo: ${formatNumber(form.total_same_item_qty, 0, 0)}`,
+            "📝 *NOTAS*",
+            "- Cotización estimada sujeta a validación del courier.",
+            "- Repack fee es un cargo único estimado.",
+            "- La exoneración de storage por prealerta depende de que el courier valide que fue emitida a tiempo.",
+            "- Si la carga permanece muchos días en Miami, pueden aplicar ajustes o cargos adicionales según políticas del courier.",
             "",
-            ...(savedQuote
-                ? [
-                    `Código de cotización: ${savedQuote.shipment_code}`,
-                    `Shipment ID: ${savedQuote.shipment_id}`,
-                    "",
-                ]
-                : []),
-            repackNotice ? `${repackNotice.title}: ${repackNotice.message}` : "",
-            "Generado desde Vzla Cargo Hub.",
-        ].filter(Boolean);
+            "_Generado desde Vzla Cargo Hub._",
+        ].filter(line => line !== null);
 
         return lines.join("\n");
     }
@@ -1510,7 +1515,18 @@ export default function Home() {
         }
 
         const message = buildWhatsAppMessage();
-        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        let phone = "";
+        
+        if (form.courier_code === "owc") {
+            phone = "19542756273";
+        } else if (form.courier_code === "zoom") {
+            phone = "584148889666";
+        }
+
+        const url = phone 
+            ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+            : `https://wa.me/?text=${encodeURIComponent(message)}`;
+            
         window.open(url, "_blank", "noopener,noreferrer");
     }
 
@@ -1650,13 +1666,13 @@ export default function Home() {
 
                     <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_270px] lg:items-end">
                         <div className="min-w-0">
-                            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-950 drop-shadow-sm break-words">
+                            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-950 drop-shadow-sm break-words">
                                 Vzla Cargo Hub
                             </h1>
 
-                            <p className="mt-3 sm:mt-4 max-w-3xl text-base sm:text-lg lg:text-xl leading-7 sm:leading-9 text-slate-700">
+                            <p className="mt-2 sm:mt-4 max-w-3xl text-sm sm:text-lg lg:text-xl leading-6 sm:leading-9 text-slate-700">
                                 Calcula envíos con reglas reales del courier, peso final,
-                                volumen visible y desglose detallado por tipo de cargo.
+                                volumen visible y desglose detallado.
                             </p>
 
                             <div className="mt-6 flex flex-wrap gap-2">
@@ -1715,7 +1731,7 @@ export default function Home() {
                                     Completa los datos del paquete para estimar el costo del envío.
                                 </p>
                             </div>
-                            <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate w-full sm:w-auto">
+                            <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate w-full sm:w-auto mx-auto sm:mx-0">
                                 <div
                                     className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${
                                         viewMode === "simple" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
@@ -2204,10 +2220,10 @@ export default function Home() {
                                     <h3 className="text-lg font-semibold text-slate-900">Cargos y servicios adicionales</h3>
                                     <span className="transition-transform group-open:rotate-180 text-slate-500">▼</span>
                                 </div>
-                                <div className="mt-1 text-sm text-slate-500 group-open:hidden">
-                                    Handling, repack, seguro, storage y otros cargos opcionales.
-                                    {(form.enable_handling_fee || form.enable_repack_fee || Number(form.hold_days) > 0 || form.use_insurance || form.use_purchase_by_order) ? (
-                                        <span className="ml-1 font-semibold text-blue-600">Hay cargos activos en esta cotización.</span>
+                                <div className="mt-1 text-xs sm:text-sm text-slate-500 group-open:hidden">
+                                    Handling, repack, seguro y otros cargos.
+                                    {activeChargesSummary ? (
+                                        <span className="ml-1 font-semibold text-blue-600 block sm:inline">Activos: {activeChargesSummary}.</span>
                                     ) : null}
                                 </div>
                             </summary>
@@ -2282,7 +2298,7 @@ export default function Home() {
 
                             <div className="mt-5 grid gap-4 grid-cols-1 sm:grid-cols-2">
                                 <label className="space-y-2">
-                                    <FieldHelpLabel help="Hold mode solo afecta storage. General representa hold normal con storage después de 3 días. Repack representa una prealerta válida de reempaque con storage exonerado. No decide si se cobra Repack Fee.">
+                                    <FieldHelpLabel help="Hold mode solo afecta storage. General representa hold normal con storage después de 3 días. Prealertar hold representa una prealerta válida de reempaque emitida antes de la llegada del paquete a Miami.">
                                         Modo de storage / hold
                                     </FieldHelpLabel>
                                     <select
@@ -2295,7 +2311,7 @@ export default function Home() {
                                     >
                                         <option value="none">Sin hold</option>
                                         <option value="general">Hold normal</option>
-                                        <option value="repack">Prealerta repack válida</option>
+                                        <option value="repack">Prealertar hold</option>
                                     </select>
                                 </label>
 
@@ -2324,27 +2340,31 @@ export default function Home() {
                                 </label>
                             </div>
 
-                            {effectiveHoldMode === "repack" ? (
-                                <label className="mt-4 flex items-start gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 transition">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 h-4 w-4 rounded border-slate-300"
-                                        checked={form.repack_prealert_valid}
-                                        onChange={(e) =>
-                                            updateForm("repack_prealert_valid", e.target.checked)
-                                        }
-                                    />
-                                    <span>
-                                        <span className="block font-semibold">
-                                            Prealerta de reempaque emitida a tiempo
+                            {effectiveHoldMode === "repack" && (
+                                <div className="mt-4 space-y-4">
+                                    <label className="flex items-start gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 transition">
+                                        <input
+                                            type="checkbox"
+                                            className="mt-1 h-4 w-4 rounded border-slate-300"
+                                            checked={form.repack_prealert_valid}
+                                            onChange={(e) =>
+                                                updateForm("repack_prealert_valid", e.target.checked)
+                                            }
+                                        />
+                                        <span>
+                                            <span className="block font-semibold">
+                                                Prealerta de reempaque emitida a tiempo
+                                            </span>
+                                            <span className="mt-1 block leading-6">
+                                                Indica que la prealerta fue enviada antes de la llegada a Miami. Activa automáticamente Repack Fee. El courier validará si aplica la exoneración de storage.
+                                            </span>
                                         </span>
-                                        <span className="mt-1 block leading-6">
-                                            Confirma que la prealerta de reempaque fue creada
-                                            antes de que la carga fuera recibida en Miami.
-                                        </span>
-                                    </span>
-                                </label>
-                            ) : null}
+                                    </label>
+                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 italic">
+                                        <strong>Nota honesta:</strong> La exoneración de storage es una estimación. OWC validará si la prealerta fue emitida a tiempo para aplicarla.
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="mt-5 flex flex-col gap-3">
                                 <div
@@ -2430,6 +2450,15 @@ export default function Home() {
                                 <p className="font-semibold">{repackNotice.title}</p>
                                 <p className="mt-1 leading-relaxed opacity-90">{repackNotice.message}</p>
                             </div>
+                        ) : null}
+
+                        {resultFlags.hold_extension_warning ? (
+                             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                <p className="font-semibold">⚠️ Nota sobre Hold de Reempaque</p>
+                                <p className="mt-1 leading-relaxed opacity-90">
+                                    La exoneración está sujeta a validación del courier si la carga permanece varios días en Miami.
+                                </p>
+                             </div>
                         ) : null}
 
                         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -2523,12 +2552,11 @@ export default function Home() {
                             <div className="order-3 lg:order-1 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
                                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
-                                            Tarifario OWC en sistema
+                                        <h2 className="text-lg sm:text-2xl font-bold text-slate-950">
+                                            Tarifario OWC
                                         </h2>
-                                        <p className="mt-1 text-sm text-slate-600">
-                                            Se carga automáticamente al seleccionar One Way Cargo y
-                                            puedes refrescarlo manualmente con el botón.
+                                        <p className="mt-1 text-xs sm:text-sm text-slate-600">
+                                            Tarifas cargadas automáticamente.
                                         </p>
                                     </div>
 
@@ -2722,7 +2750,10 @@ export default function Home() {
                                                     ft³
                                                 </p>
                                                 <p>
-                                                    <strong>Tracking count:</strong> {form.tracking_count}
+                                                    <strong>Trackings originales:</strong> {resultMetrics.original_tracking_count ?? form.tracking_count}
+                                                </p>
+                                                <p>
+                                                    <strong>Handling cobrable:</strong> {resultMetrics.effective_handling_count ?? form.tracking_count}
                                                 </p>
                                             </div>
 
@@ -2812,7 +2843,7 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                                <div className="mb-2 grid grid-cols-[1.1fr_0.7fr_0.7fr] gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <div className="mb-2 grid grid-cols-[1fr_0.75fr_0.75fr] gap-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     <div>Concepto</div>
                                     <div className="text-right">VES</div>
                                     <div className="text-right">USD</div>
@@ -2825,7 +2856,9 @@ export default function Home() {
                                     tone="blue"
                                 />
                                 <BreakdownRow
-                                    label="Handling"
+                                    label={`Handling x${resultMetrics.effective_handling_count ?? form.tracking_count}${
+                                        resultFlags.handling_consolidated_by_repack_prealert ? " (consolidado por prealerta/reempaque)" : ""
+                                    }`}
                                     ves={resultBreakdown.handling_ves}
                                     usd={resultBreakdown.handling_usd}
                                     tone="indigo"
@@ -2860,10 +2893,10 @@ export default function Home() {
                                     tone="amber"
                                 />
                                 <BreakdownRow
-                                    label="Repack"
+                                    label="Repack fee único estimado"
                                     ves={resultBreakdown.repack_ves}
                                     usd={resultBreakdown.repack_usd}
-                                    tone="violet"
+                                    tone="rose"
                                 />
                                 <BreakdownRow
                                     label="Storage"
@@ -2907,16 +2940,6 @@ export default function Home() {
                             </div>
                         ) : null}
 
-                        {rawResponse ? (
-                            <details className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                                <summary className="cursor-pointer text-lg font-semibold text-slate-900">
-                                    JSON de respuesta
-                                </summary>
-                                <pre className="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs text-slate-100">
-                                    {rawResponse}
-                                </pre>
-                            </details>
-                        ) : null}
                     </section>
                 </div>
             </div>
