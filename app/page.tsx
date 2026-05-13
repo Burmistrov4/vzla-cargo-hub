@@ -341,10 +341,8 @@ function courierLabel(courier: CourierCode | string) {
     return "Sin seleccionar";
 }
 
-function deliveryLabel(delivery: DeliveryType) {
-    if (delivery === "office") return "Office";
-    if (delivery === "delivery") return "Delivery";
-    return "Home";
+function deliveryLabel(_delivery: DeliveryType) {
+    return "Office";
 }
 
 function holdModeLabel(mode: HoldMode) {
@@ -1470,7 +1468,7 @@ export default function Home() {
             `Courier: ${courierLabel(form.courier_code)}`,
             `Servicio: ${serviceLabel(effectiveServiceType)}`,
             `Región: ${regionLabel(form.region)}`,
-            `Delivery: ${deliveryLabel(form.delivery_type)}`,
+            `Delivery: Office`,
             `Tracking originales: ${originalTrackingCount}`,
             `Handling cobrable: ${effectiveHandlingCount}`,
             flags.handling_consolidated_by_repack_prealert ? "Motivo: consolidado por prealerta/reempaque válido" : null,
@@ -1730,10 +1728,10 @@ export default function Home() {
                                 </p>
                             </div>
                             {form.courier_code === "owc" && (
-                                <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate w-full sm:w-auto mx-auto sm:mx-0">
+                                <div className="relative grid grid-cols-2 w-full sm:w-72 mx-auto sm:mx-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate">
                                     <div
-                                        className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${
-                                            viewMode === "simple" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
+                                        className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${
+                                            viewMode === "simple" ? "translate-x-0" : "translate-x-full"
                                         }`}
                                     />
                                     <button
@@ -1742,7 +1740,7 @@ export default function Home() {
                                             setViewMode("simple");
                                             setChargesOpen(false);
                                         }}
-                                        className={`relative z-10 flex-1 sm:w-32 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
+                                        className={`relative z-10 flex items-center justify-center rounded-full py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
                                             viewMode === "simple" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
                                         }`}
                                     >
@@ -1754,7 +1752,7 @@ export default function Home() {
                                             setViewMode("advanced");
                                             setChargesOpen(true);
                                         }}
-                                        className={`relative z-10 flex-1 sm:w-32 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
+                                        className={`relative z-10 flex items-center justify-center rounded-full py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
                                             viewMode === "advanced" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
                                         }`}
                                     >
@@ -1848,22 +1846,12 @@ export default function Home() {
                             ) : null}
 
                             <label className="space-y-2">
-                                <FieldHelpLabel help={isZoom ? "Modalidad de entrega. Oficina significa retiro o entrega según la regla configurada para Zoom." : "Esta opción indica cómo deseas recibir o gestionar la entrega en Venezuela. Por ahora es informativa en OWC si no aparece un cargo específico en el desglose."}>
+                                <FieldHelpLabel help={isZoom ? "Modalidad de entrega. Oficina significa retiro o entrega según la regla configurada para Zoom." : "Esta opción indica cómo deseas recibir o gestionar la entrega en Venezuela. Por ahora, Office es la única modalidad de entrega calculada."}>
                                     {isZoom ? "Entrega" : "Delivery type"}
                                 </FieldHelpLabel>
-                                <select
-                                    aria-label={isZoom ? "Entrega" : "Delivery type"}
-                                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
-                                    value={form.delivery_type}
-                                    disabled={isZoom}
-                                    onChange={(e) =>
-                                        updateForm("delivery_type", e.target.value as DeliveryType)
-                                    }
-                                >
-                                    <option value="office">{isZoom ? "Oficina" : "Office"}</option>
-                                    <option value="delivery">Delivery</option>
-                                    <option value="home">Home</option>
-                                </select>
+                                <div className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-700 font-medium">
+                                    Office
+                                </div>
                             </label>
 
                             <label className="space-y-2">
@@ -2213,7 +2201,7 @@ export default function Home() {
                             </div>
                         )}
 
-                        {!isZoom ? (
+                        {form.courier_code === "owc" && (
                         <details 
                             open={chargesOpen} 
                             onToggle={(e) => setChargesOpen(e.currentTarget.open)}
@@ -2442,7 +2430,7 @@ export default function Home() {
                             </div>
                             </div>
                         </details>
-                        ) : null}
+                        )}
 
                         {repackNotice ? (
                             <div
@@ -2640,8 +2628,8 @@ export default function Home() {
                             </div>
 
                             {form.courier_code === "zoom" ? (
-                                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                                    Zoom está en implementación. Algunas métricas avanzadas pueden mostrarse en cero mientras terminamos su motor de cálculo.
+                                <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                                    Cotización referencial Zoom. Valida el monto final con Zoom o un asesor autorizado antes de pagar.
                                 </div>
                             ) : null}
 
@@ -2953,41 +2941,40 @@ export default function Home() {
                         {form.courier_code === "owc" 
                             ? "Reglas de One Way Cargo" 
                             : form.courier_code === "zoom" 
-                                ? "Reglas de Zoom" 
+                                ? "Reglas de Zoom Casillero Internacional" 
                                 : "Reglas generales de uso"}
                     </h2>
                     
                     <div className="grid gap-8 md:grid-cols-2">
-                        {form.courier_code === "" && (
+                                {form.courier_code === "" && (
                             <>
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 mb-3">Cómo empezar</h3>
                                     <ul className="space-y-3 text-sm text-slate-600">
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">1.</span>
-                                            <span>Primero selecciona un courier del listado.</span>
+                                            <span className="font-bold text-slate-900">•</span>
+                                            <span>La herramienta es referencial para estimación de costos.</span>
                                         </li>
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">2.</span>
-                                            <span>Luego selecciona el servicio (Aéreo o Marítimo) según disponibilidad.</span>
+                                            <span className="font-bold text-slate-900">•</span>
+                                            <span>Primero selecciona un courier del listado para ver sus opciones.</span>
                                         </li>
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">3.</span>
-                                            <span>Ingresa el peso y las dimensiones del paquete.</span>
+                                            <span className="font-bold text-slate-900">•</span>
+                                            <span>Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.</span>
                                         </li>
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">4.</span>
-                                            <span>Presiona el botón &quot;Calcular&quot; para obtener el presupuesto.</span>
+                                            <span className="font-bold text-slate-900">•</span>
+                                            <span>No todas las opciones de cálculo aplican a todos los couriers.</span>
                                         </li>
                                     </ul>
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                                     <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Información importante</h3>
                                     <ul className="space-y-3 text-sm text-slate-600 list-disc pl-4">
-                                        <li>Los montos son estimaciones y deben ser validados por el courier al recibir la carga.</li>
+                                        <li>Los montos son estimaciones y deben ser validados al recibir la carga.</li>
                                         <li>La tasa BCV usada puede variar según el día de procesamiento.</li>
-                                        <li>Algunos cargos adicionales dependen del courier seleccionado y aparecerán solo cuando apliquen.</li>
-                                        <li>La app busca orientar al usuario y al asesor, pero el courier puede ajustar los cargos finales.</li>
+                                        <li>Ciertos cargos dependen de regulaciones aduanales vigentes.</li>
                                     </ul>
                                 </div>
                             </>
@@ -2996,33 +2983,21 @@ export default function Home() {
                         {form.courier_code === "owc" && (
                             <>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Guía OWC</h3>
-                                    <div className="space-y-4 text-sm text-slate-600">
-                                        <div>
-                                            <p className="font-bold text-slate-900 mb-1">Aéreo:</p>
-                                            <p>Se cobra por libra. Puede aplicar un mínimo de carga o peso final según las reglas del motor.</p>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-slate-900 mb-1">Marítimo:</p>
-                                            <p>Se cobra por pie cúbico. La app muestra el volumen redondeado para lectura, pero el flete puede usar el volumen real sin redondear.</p>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-slate-900 mb-1">Handling:</p>
-                                            <p>Normalmente se cobra por tracking/caja. Si hay reempaque y prealerta válida, el cargo puede consolidarse a una sola unidad.</p>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-slate-900 mb-1">Repack Fee:</p>
-                                            <p>Es un cargo fijo de $5 por servicio de reempaque, independiente del flete y del storage.</p>
-                                        </div>
-                                    </div>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Reglas OWC</h3>
+                                    <ul className="space-y-3 text-sm text-slate-600">
+                                        <li><span className="font-bold">Entrega:</span> Office es la única modalidad calculada actualmente.</li>
+                                        <li><span className="font-bold">Flete:</span> Aéreo y marítimo usan las tarifas activas del sistema.</li>
+                                        <li><span className="font-bold">Handling:</span> Puede aplicar por tracking/paquete recibido en almacén.</li>
+                                        <li><span className="font-bold">Repack Fee:</span> Cargo de servicio separado del flete ($5).</li>
+                                        <li><span className="font-bold">Prealerta hold:</span> Puede consolidar handling y exonerar storage si la prealerta fue emitida a tiempo, sujeto a validación del courier.</li>
+                                    </ul>
                                 </div>
                                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                                    <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide mb-3">Prealerta y Storage</h3>
+                                    <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide mb-3">Servicios Adicionales</h3>
                                     <ul className="space-y-3 text-sm text-amber-900/90 list-disc pl-4">
-                                        <li><strong>Prealertar hold:</strong> Se activa cuando notificas el reempaque antes de la recepción en Miami. Activa Repack fee y puede exonerar storage.</li>
-                                        <li><strong>Exoneración:</strong> La exoneración de storage por prealerta está sujeta a validación si la carga permanece muchos días en almacén.</li>
-                                        <li><strong>Hold normal:</strong> Se usa para retener carga sin flujo de reempaque previo. Puede generar storage después de los días libres.</li>
-                                        <li><strong>Otros servicios:</strong> Activa Seguro, Impuesto Provisional o Compra por Encargo según el valor y tipo de tu mercancía.</li>
+                                        <li><strong>Storage:</strong> Depende de días en hold; sujeto a validación de OWC.</li>
+                                        <li><strong>Seguro:</strong> Opcional (5%) para protección de mercancía.</li>
+                                        <li><strong>Compra por encargo:</strong> Servicio separado (Personal Shopper) con tarifas propias.</li>
                                     </ul>
                                 </div>
                             </>
@@ -3031,20 +3006,21 @@ export default function Home() {
                         {form.courier_code === "zoom" && (
                             <>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Servicio Zoom</h3>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Reglas de Zoom Casillero Internacional</h3>
                                     <ul className="space-y-3 text-sm text-slate-600">
-                                        <li>Zoom se encuentra en fase de implementación (beta).</li>
-                                        <li>El flujo de cálculo es simplificado y enfocado en peso físico (kg).</li>
-                                        <li>Asegúrate de ingresar el valor declarado para validaciones de protección de carga.</li>
-                                        <li>La modalidad de entrega &quot;Oficina&quot; es la estándar para este servicio.</li>
+                                        <li>Esta cotización es referencial para estimar envíos con Zoom Casillero Internacional.</li>
+                                        <li>La modalidad disponible en la app actualmente es <span className="font-bold">Office</span>.</li>
+                                        <li>Ingresa el peso físico en kg y selecciona si deseas consolidar encomiendas cuando aplique.</li>
+                                        <li>La tarifa final debe validarse con Zoom o con un asesor autorizado antes de pagar.</li>
+                                        <li>Algunas condiciones como protección, consolidación o cargos administrativos pueden depender del caso real.</li>
                                     </ul>
                                 </div>
                                 <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                                    <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-3">Notas de Zoom</h3>
+                                    <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-3">Consideraciones</h3>
                                     <ul className="space-y-3 text-sm text-blue-900/90 list-disc pl-4">
-                                        <li>El servicio marítimo no está disponible actualmente para Zoom en esta app.</li>
-                                        <li>La consolidación permite agrupar varias encomiendas en un solo envío si las reglas de Zoom lo permiten.</li>
-                                        <li>Ciertas métricas avanzadas de OWC (como Repack o Storage específico) no aplican al motor de Zoom.</li>
+                                        <li>Usa esta calculadora como estimación previa.</li>
+                                        <li>Verifica siempre el monto final con Zoom.</li>
+                                        <li>Si la carga tiene condiciones especiales, consulta con un asesor.</li>
                                     </ul>
                                 </div>
                             </>
