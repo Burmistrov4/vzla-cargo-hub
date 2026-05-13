@@ -11,7 +11,6 @@ import {
 
 const API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://vzla-cargo-hub-backend-production.up.railway.app";
-const TOURISM_URL = "https://sites.google.com/view/venezuela-rutas-y-sabores?usp=sharing";
 
 type CourierCode = "" | "owc" | "zoom";
 type ServiceType = "" | "air" | "sea";
@@ -1244,7 +1243,6 @@ export default function Home() {
             setError(message);
             setResult(null);
             setLastQuoteSnapshot(null);
-            setRawResponse("");
         } finally {
             setLoading(false);
         }
@@ -1731,37 +1729,39 @@ export default function Home() {
                                     Completa los datos del paquete para estimar el costo del envío.
                                 </p>
                             </div>
-                            <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate w-full sm:w-auto mx-auto sm:mx-0">
-                                <div
-                                    className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${
-                                        viewMode === "simple" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
-                                    }`}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setViewMode("simple");
-                                        setChargesOpen(false);
-                                    }}
-                                    className={`relative z-10 flex-1 sm:w-36 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
-                                        viewMode === "simple" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                                >
-                                    Modo simple
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setViewMode("advanced");
-                                        setChargesOpen(true);
-                                    }}
-                                    className={`relative z-10 flex-1 sm:w-36 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
-                                        viewMode === "advanced" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                                >
-                                    Modo avanzado
-                                </button>
-                            </div>
+                            {form.courier_code === "owc" && (
+                                <div className="relative flex shrink-0 rounded-full bg-slate-100 p-1 ring-1 ring-slate-200 isolate w-full sm:w-auto mx-auto sm:mx-0">
+                                    <div
+                                        className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${
+                                            viewMode === "simple" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
+                                        }`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setViewMode("simple");
+                                            setChargesOpen(false);
+                                        }}
+                                        className={`relative z-10 flex-1 sm:w-32 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
+                                            viewMode === "simple" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
+                                        }`}
+                                    >
+                                        Modo simple
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setViewMode("advanced");
+                                            setChargesOpen(true);
+                                        }}
+                                        className={`relative z-10 flex-1 sm:w-32 rounded-full py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors duration-300 ${
+                                            viewMode === "advanced" ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
+                                        }`}
+                                    >
+                                        Modo avanzado
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -1772,6 +1772,23 @@ export default function Home() {
                                     value={form.courier_code}
                                     onChange={(e) => {
                                         const nextCourier = e.target.value as CourierCode;
+                                        
+                                        // Reset results and error when courier changes
+                                        setResult(null);
+                                        setLastQuoteSnapshot(null);
+                                        setError("");
+                                        setSavedQuote(null);
+                                        setSaveMessage("");
+                                        setSaveError("");
+
+                                        if (nextCourier !== "owc") {
+                                            setViewMode("simple");
+                                            setChargesOpen(false);
+                                            setOwcItemQuery("");
+                                            setOwcRestrictedItems(null);
+                                            setOwcRestrictedError("");
+                                            setOwcRestrictedLoading(false);
+                                        }
 
                                         setForm((prev) => ({
                                             ...prev,
@@ -1785,13 +1802,6 @@ export default function Home() {
                                             region:
                                                 nextCourier === "zoom" ? "region_central" : prev.region,
                                         }));
-
-                                        if (nextCourier !== "owc") {
-                                            setOwcItemQuery("");
-                                            setOwcRestrictedItems(null);
-                                            setOwcRestrictedError("");
-                                            setOwcRestrictedLoading(false);
-                                        }
                                     }}
                                 >
                                     <option value="">Selecciona un courier</option>
@@ -1801,9 +1811,9 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <span className="text-sm font-medium text-slate-700">
+                                <FieldHelpLabel help={isZoom ? "Tipo de servicio seleccionado para la cotización Zoom. Actualmente puede estar limitado por el motor disponible." : "Selecciona entre Aéreo o Marítimo."}>
                                     {isZoom ? "Servicio Zoom" : "Servicio"}
-                                </span>
+                                </FieldHelpLabel>
                                 <select
                                     className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
                                     value={effectiveServiceType}
@@ -1838,15 +1848,9 @@ export default function Home() {
                             ) : null}
 
                             <label className="space-y-2">
-                                {!isZoom ? (
-                                    <FieldHelpLabel help="Esta opción indica cómo deseas recibir o gestionar la entrega en Venezuela. Por ahora es informativa en OWC si no aparece un cargo específico en el desglose. No debe confundirse con Pick Up en Miami, que es un servicio aparte.">
-                                        Delivery type
-                                    </FieldHelpLabel>
-                                ) : (
-                                    <span className="text-sm font-medium text-slate-700">
-                                        Entrega
-                                    </span>
-                                )}
+                                <FieldHelpLabel help={isZoom ? "Modalidad de entrega. Oficina significa retiro o entrega según la regla configurada para Zoom." : "Esta opción indica cómo deseas recibir o gestionar la entrega en Venezuela. Por ahora es informativa en OWC si no aparece un cargo específico en el desglose."}>
+                                    {isZoom ? "Entrega" : "Delivery type"}
+                                </FieldHelpLabel>
                                 <select
                                     aria-label={isZoom ? "Entrega" : "Delivery type"}
                                     className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
@@ -1863,9 +1867,9 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <span className="text-sm font-medium text-slate-700">
+                                <FieldHelpLabel help={isZoom ? "Valor referencial de la mercancía. Puede usarse para protección, seguro o validaciones futuras." : "Valor total de la mercancía para efectos de seguro o aduana."}>
                                     Valor declarado USD
-                                </span>
+                                </FieldHelpLabel>
                                 <input
                                     type="text"
                                     inputMode="decimal"
@@ -1888,9 +1892,9 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <span className="text-sm font-medium text-slate-700">
+                                <FieldHelpLabel help={isZoom ? "Peso real del paquete en kilogramos. Zoom puede usar este dato como base principal de cálculo." : "Peso físico del paquete en libras."}>
                                     {isZoom ? "Peso fisico (kg)" : "Peso total (lb)"}
-                                </span>
+                                </FieldHelpLabel>
                                 <input
                                     type="text"
                                     inputMode="decimal"
@@ -1917,9 +1921,9 @@ export default function Home() {
                             {isZoom ? (
                                 <>
                                     <label className="space-y-2">
-                                        <span className="text-sm font-medium text-slate-700">
+                                        <FieldHelpLabel help="Indica si deseas agrupar varios paquetes en una sola cotización cuando el servicio lo permita.">
                                             Consolidar encomiendas
-                                        </span>
+                                        </FieldHelpLabel>
                                         <select
                                             className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
                                             value={form.consolidated ? "yes" : "no"}
@@ -2945,81 +2949,118 @@ export default function Home() {
             </div>
             <div className="mx-auto max-w-7xl px-4 sm:px-6 pb-6 sm:pb-10">
                 <div className="rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white p-5 sm:p-6 md:p-10 shadow-sm mb-6 sm:mb-8">
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-950 mb-4 sm:mb-6">Cómo usar Vzla Cargo Hub</h2>
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-950 mb-4 sm:mb-6">
+                        {form.courier_code === "owc" 
+                            ? "Reglas de One Way Cargo" 
+                            : form.courier_code === "zoom" 
+                                ? "Reglas de Zoom" 
+                                : "Reglas generales de uso"}
+                    </h2>
                     
                     <div className="grid gap-8 md:grid-cols-2">
-                        <div>
-                            <h3 className="text-lg font-semibold text-slate-900 mb-3">Guía básica</h3>
-                            <ul className="space-y-3 text-sm text-slate-600">
-                                <li className="flex gap-2">
-                                    <span className="font-bold text-slate-900">1.</span>
-                                    <span>Selecciona el courier y el tipo de servicio (Aéreo o Marítimo).</span>
-                                </li>
-                                <li className="flex gap-2">
-                                    <span className="font-bold text-slate-900">2.</span>
-                                    <span>Ingresa las dimensiones y el peso de tu paquete.</span>
-                                </li>
-                                <li className="flex gap-2">
-                                    <span className="font-bold text-slate-900">3.</span>
-                                    <span>En modo avanzado, ajusta reglas opcionales como handling o reempaque si aplican a tu caso.</span>
-                                </li>
-                                <li className="flex gap-2">
-                                    <span className="font-bold text-slate-900">4.</span>
-                                    <span>Haz clic en Calcular para ver el desglose en dólares y bolívares.</span>
-                                </li>
-                            </ul>
-                        </div>
-                        
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                            <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide mb-3">Reglas importantes</h3>
-                            <ul className="space-y-3 text-sm text-amber-900/90 list-disc pl-4">
-                                <li><strong className="font-semibold">Repack Fee:</strong> Es un cargo por servicio separado. No exonera el almacenaje por sí solo.</li>
-                                <li><strong className="font-semibold">Hold normal (Almacenaje):</strong> Puede generar cargos por Storage Fee después de los 3 días hábiles libres.</li>
-                                <li><strong className="font-semibold">Prealerta de repack válida:</strong> Solo exonera el cobro de storage si fue emitida correctamente y a tiempo antes de la llegada del paquete.</li>
-                                <li><strong className="font-semibold">Volumen marítimo:</strong> El flete puede calcularse usando el volumen real completo (con decimales) aunque visualmente la app muestre el pie cúbico visible/redondeado, para alinearse con el courier.</li>
-                                <li><strong className="font-semibold">Estimaciones:</strong> Esta app estima el costo según reglas predefinidas. El courier (ej. OWC) puede ajustar o exonerar cargos manualmente tras revisión técnica.</li>
-                            </ul>
-                        </div>
+                        {form.courier_code === "" && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Cómo empezar</h3>
+                                    <ul className="space-y-3 text-sm text-slate-600">
+                                        <li className="flex gap-2">
+                                            <span className="font-bold text-slate-900">1.</span>
+                                            <span>Primero selecciona un courier del listado.</span>
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="font-bold text-slate-900">2.</span>
+                                            <span>Luego selecciona el servicio (Aéreo o Marítimo) según disponibilidad.</span>
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="font-bold text-slate-900">3.</span>
+                                            <span>Ingresa el peso y las dimensiones del paquete.</span>
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="font-bold text-slate-900">4.</span>
+                                            <span>Presiona el botón &quot;Calcular&quot; para obtener el presupuesto.</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Información importante</h3>
+                                    <ul className="space-y-3 text-sm text-slate-600 list-disc pl-4">
+                                        <li>Los montos son estimaciones y deben ser validados por el courier al recibir la carga.</li>
+                                        <li>La tasa BCV usada puede variar según el día de procesamiento.</li>
+                                        <li>Algunos cargos adicionales dependen del courier seleccionado y aparecerán solo cuando apliquen.</li>
+                                        <li>La app busca orientar al usuario y al asesor, pero el courier puede ajustar los cargos finales.</li>
+                                    </ul>
+                                </div>
+                            </>
+                        )}
+
+                        {form.courier_code === "owc" && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Guía OWC</h3>
+                                    <div className="space-y-4 text-sm text-slate-600">
+                                        <div>
+                                            <p className="font-bold text-slate-900 mb-1">Aéreo:</p>
+                                            <p>Se cobra por libra. Puede aplicar un mínimo de carga o peso final según las reglas del motor.</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900 mb-1">Marítimo:</p>
+                                            <p>Se cobra por pie cúbico. La app muestra el volumen redondeado para lectura, pero el flete puede usar el volumen real sin redondear.</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900 mb-1">Handling:</p>
+                                            <p>Normalmente se cobra por tracking/caja. Si hay reempaque y prealerta válida, el cargo puede consolidarse a una sola unidad.</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900 mb-1">Repack Fee:</p>
+                                            <p>Es un cargo fijo de $5 por servicio de reempaque, independiente del flete y del storage.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                                    <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide mb-3">Prealerta y Storage</h3>
+                                    <ul className="space-y-3 text-sm text-amber-900/90 list-disc pl-4">
+                                        <li><strong>Prealertar hold:</strong> Se activa cuando notificas el reempaque antes de la recepción en Miami. Activa Repack fee y puede exonerar storage.</li>
+                                        <li><strong>Exoneración:</strong> La exoneración de storage por prealerta está sujeta a validación si la carga permanece muchos días en almacén.</li>
+                                        <li><strong>Hold normal:</strong> Se usa para retener carga sin flujo de reempaque previo. Puede generar storage después de los días libres.</li>
+                                        <li><strong>Otros servicios:</strong> Activa Seguro, Impuesto Provisional o Compra por Encargo según el valor y tipo de tu mercancía.</li>
+                                    </ul>
+                                </div>
+                            </>
+                        )}
+
+                        {form.courier_code === "zoom" && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Servicio Zoom</h3>
+                                    <ul className="space-y-3 text-sm text-slate-600">
+                                        <li>Zoom se encuentra en fase de implementación (beta).</li>
+                                        <li>El flujo de cálculo es simplificado y enfocado en peso físico (kg).</li>
+                                        <li>Asegúrate de ingresar el valor declarado para validaciones de protección de carga.</li>
+                                        <li>La modalidad de entrega &quot;Oficina&quot; es la estándar para este servicio.</li>
+                                    </ul>
+                                </div>
+                                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                                    <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-3">Notas de Zoom</h3>
+                                    <ul className="space-y-3 text-sm text-blue-900/90 list-disc pl-4">
+                                        <li>El servicio marítimo no está disponible actualmente para Zoom en esta app.</li>
+                                        <li>La consolidación permite agrupar varias encomiendas en un solo envío si las reglas de Zoom lo permiten.</li>
+                                        <li>Ciertas métricas avanzadas de OWC (como Repack o Storage específico) no aplican al motor de Zoom.</li>
+                                    </ul>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                {/* Banner de turismo reubicado */}
-                <div className="relative rounded-3xl sm:rounded-[2rem] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-5 sm:p-6 shadow-sm">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="max-w-3xl">
-                            <div className="mb-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
-                                Turismo en Venezuela
-                            </div>
-                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-950">
-                                Apoya el turismo en los llanos venezolanos
-                            </h2>
-                            <p className="mt-2 text-sm leading-6 text-slate-600">
-                                Descubre destinos, rutas, paisajes y experiencias que muestran lo mejor de Venezuela.
-                                Esta sección abre en una pestaña nueva para que no pierdas tu cotización.
-                            </p>
-                        </div>
-
-                        <div className="flex shrink-0">
-                            <a
-                                href={TOURISM_URL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 shadow-sm"
-                            >
-                                Visitar sitio de turismo
-                            </a>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            <footer className="mt-6 sm:mt-10 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white px-5 sm:px-6 py-4 sm:py-5 shadow-sm">
+            <footer className="mt-6 sm:mt-10 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white px-5 sm:px-6 py-6 shadow-sm">
                 <div className="flex flex-col gap-2 text-center text-sm text-slate-600">
-                    <p>
-                        Copyright: Lorenzo V Roca, José Tarazón, Sleither Vásquez, Adrián Cedeño.
+                    <p className="font-semibold text-slate-900">
+                        © 2026 Vzla Cargo Hub. Desarrollado por Lorenzo Valentin Roca Burmistrow.
                     </p>
                     <p>
-                        Hecho con Amor y Café ☕. Mantente al tanto de las futuras actualizaciones.
+                        Herramienta referencial para estimación de cotizaciones. Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.
                     </p>
                 </div>
             </footer>
