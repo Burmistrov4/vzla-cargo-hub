@@ -740,6 +740,7 @@ export default function Home() {
     const [numericDrafts, setNumericDrafts] = useState<
         Partial<Record<NumericField, string>>
     >({});
+    const [showSaveModal, setShowSaveModal] = useState(false);
     
     const activeChargesSummary = useMemo(() => {
         const active = [];
@@ -1247,56 +1248,10 @@ export default function Home() {
     }
 
     async function handleSaveQuote() {
-        setSaveLoading(true);
-        setSaveError("");
-        setSaveMessage("");
-
-        try {
-            const payload = buildQuotePayload();
-            const quoteSnapshot = buildQuoteSnapshot();
-
-            const response = await fetch(`${API_BASE}/quote/calculate-and-save`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                let detail = "No se pudo guardar la cotización";
-
-                if (typeof data?.detail === "string") {
-                    detail = data.detail;
-                } else if (Array.isArray(data?.detail)) {
-                    detail = data.detail
-                        .map((item: { msg?: string }) => item?.msg ?? "Error de validación")
-                        .join(" | ");
-                }
-
-                throw new Error(detail);
-            }
-
-            const saved = data as QuoteSaveResponse;
-
-            setSavedQuote(saved);
-            setSaveMessage(`Cotización guardada correctamente. Código: ${saved.shipment_code}`);
-            setSaveError("");
-            setResult(normalizeQuoteResponse(saved));
-            setLastQuoteSnapshot(quoteSnapshot);
-        } catch (err) {
-            const message =
-                err instanceof Error ? err.message : "Ocurrió un error al guardar";
-            setSaveError(message);
-            setSaveMessage("");
-        } finally {
-            setSaveLoading(false);
-        }
+        setShowSaveModal(true);
     }
 
-    const repackNotice = result
+    const repackNotice = result && result.courier_code === "owc"
         ? (() => {
             const flags = result.quote.flags;
             const serviceType = result.service_type;
@@ -2654,33 +2609,41 @@ export default function Home() {
                                             subtitle={`Unidad de cobro: ${result.quote.charge_unit === "lb" ? "lb" : "ft³"
                                                 }`}
                                         />
-                                        <MetricCard
-                                            title="Pie cúbico visible"
-                                            value={formatNumber(visibleMetrics.pieCubicoVisible, 2, 2)}
-                                            subtitle="Volumen visible/redondeado"
-                                        />
-                                        <MetricCard
-                                            title="Volumen real"
-                                            value={`${formatNumber(visibleMetrics.volumenReal, 2, 2)} ft³`}
-                                            subtitle="Volumen geométrico calculado"
-                                        />
-                                        {effectiveServiceType === "sea" && (
+                                        {!isZoom && (
+                                            <MetricCard
+                                                title="Pie cúbico visible"
+                                                value={formatNumber(visibleMetrics.pieCubicoVisible, 2, 2)}
+                                                subtitle="Volumen visible/redondeado"
+                                            />
+                                        )}
+                                        {!isZoom && (
+                                            <MetricCard
+                                                title="Volumen real"
+                                                value={`${formatNumber(visibleMetrics.volumenReal, 2, 2)} ft³`}
+                                                subtitle="Volumen geométrico calculado"
+                                            />
+                                        )}
+                                        {!isZoom && effectiveServiceType === "sea" && (
                                             <MetricCard
                                                 title="Base flete marítimo"
                                                 value={`${formatNumber(visibleMetrics.baseFleteMaritimo, 2, 2)} ft³`}
                                                 subtitle="Base usada para flete"
                                             />
                                         )}
-                                        <MetricCard
-                                            title="Base storage"
-                                            value={`${formatNumber(visibleMetrics.baseStorage, 2, 2)} ft³`}
-                                            subtitle="Base usada para almacenaje"
-                                        />
-                                        <MetricCard
-                                            title="Storage estimado"
-                                            value={formatMoneyBs(visibleMetrics.almacenamientoVes, 2)}
-                                            subtitle={formatMoneyUsd(visibleMetrics.almacenamientoUsd, 2)}
-                                        />
+                                        {!isZoom && (
+                                            <MetricCard
+                                                title="Base storage"
+                                                value={`${formatNumber(visibleMetrics.baseStorage, 2, 2)} ft³`}
+                                                subtitle="Base usada para almacenaje"
+                                            />
+                                        )}
+                                        {!isZoom && (
+                                            <MetricCard
+                                                title="Storage estimado"
+                                                value={formatMoneyBs(visibleMetrics.almacenamientoVes, 2)}
+                                                subtitle={formatMoneyUsd(visibleMetrics.almacenamientoUsd, 2)}
+                                            />
+                                        )}
                                         <MetricCard
                                             title="Total USD"
                                             value={formatMoneyUsd(result.quote.total_usd, 2)}
@@ -2847,14 +2810,16 @@ export default function Home() {
                                     usd={resultBreakdown.freight_usd}
                                     tone="blue"
                                 />
-                                <BreakdownRow
-                                    label={`Handling x${resultMetrics.effective_handling_count ?? form.tracking_count}${
-                                        resultFlags.handling_consolidated_by_repack_prealert ? " (consolidado por prealerta/reempaque)" : ""
-                                    }`}
-                                    ves={resultBreakdown.handling_ves}
-                                    usd={resultBreakdown.handling_usd}
-                                    tone="indigo"
-                                />
+                                {!isZoom && (
+                                    <BreakdownRow
+                                        label={`Handling x${resultMetrics.effective_handling_count ?? form.tracking_count}${
+                                            resultFlags.handling_consolidated_by_repack_prealert ? " (consolidado por prealerta/reempaque)" : ""
+                                        }`}
+                                        ves={resultBreakdown.handling_ves}
+                                        usd={resultBreakdown.handling_usd}
+                                        tone="indigo"
+                                    />
+                                )}
                                 {isZoom ? (
                                     <>
                                         <BreakdownRow
@@ -2871,49 +2836,51 @@ export default function Home() {
                                         />
                                     </>
                                 ) : (
-                                    <BreakdownRow
-                                        label="Seguro"
-                                        ves={resultBreakdown.insurance_ves}
-                                        usd={resultBreakdown.insurance_usd}
-                                        tone="emerald"
-                                    />
+                                    <>
+                                        <BreakdownRow
+                                            label="Seguro"
+                                            ves={resultBreakdown.insurance_ves}
+                                            usd={resultBreakdown.insurance_usd}
+                                            tone="emerald"
+                                        />
+                                        <BreakdownRow
+                                            label="Impuestos"
+                                            ves={resultBreakdown.customs_tax_ves}
+                                            usd={resultBreakdown.customs_tax_usd}
+                                            tone="amber"
+                                        />
+                                        <BreakdownRow
+                                            label="Repack fee único estimado"
+                                            ves={resultBreakdown.repack_ves}
+                                            usd={resultBreakdown.repack_usd}
+                                            tone="rose"
+                                        />
+                                        <BreakdownRow
+                                            label="Storage"
+                                            ves={resultBreakdown.storage_ves}
+                                            usd={resultBreakdown.storage_usd}
+                                            tone="cyan"
+                                        />
+                                        <BreakdownRow
+                                            label="Compra por encargo"
+                                            ves={resultBreakdown.purchase_service_ves}
+                                            usd={resultBreakdown.purchase_service_usd}
+                                            tone="rose"
+                                        />
+                                        <BreakdownRow
+                                            label="Compactación"
+                                            ves={resultBreakdown.compactation_fee_ves}
+                                            usd={resultBreakdown.compactation_fee_usd}
+                                            tone="slate"
+                                        />
+                                        <BreakdownRow
+                                            label="Packaging"
+                                            ves={resultBreakdown.packaging_ves}
+                                            usd={resultBreakdown.packaging_usd}
+                                            tone="slate"
+                                        />
+                                    </>
                                 )}
-                                <BreakdownRow
-                                    label="Impuestos"
-                                    ves={resultBreakdown.customs_tax_ves}
-                                    usd={resultBreakdown.customs_tax_usd}
-                                    tone="amber"
-                                />
-                                <BreakdownRow
-                                    label="Repack fee único estimado"
-                                    ves={resultBreakdown.repack_ves}
-                                    usd={resultBreakdown.repack_usd}
-                                    tone="rose"
-                                />
-                                <BreakdownRow
-                                    label="Storage"
-                                    ves={resultBreakdown.storage_ves}
-                                    usd={resultBreakdown.storage_usd}
-                                    tone="cyan"
-                                />
-                                <BreakdownRow
-                                    label="Compra por encargo"
-                                    ves={resultBreakdown.purchase_service_ves}
-                                    usd={resultBreakdown.purchase_service_usd}
-                                    tone="rose"
-                                />
-                                <BreakdownRow
-                                    label="Compactación"
-                                    ves={resultBreakdown.compactation_fee_ves}
-                                    usd={resultBreakdown.compactation_fee_usd}
-                                    tone="slate"
-                                />
-                                <BreakdownRow
-                                    label="Packaging"
-                                    ves={resultBreakdown.packaging_ves}
-                                    usd={resultBreakdown.packaging_usd}
-                                    tone="slate"
-                                />
 
                                 <div className="mt-5 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                                     <MetricCard
@@ -3040,6 +3007,31 @@ export default function Home() {
                     </p>
                 </div>
             </footer>
+
+            {showSaveModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+                        <div className="mb-4 flex items-center justify-center text-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-12 w-12">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="mb-2 text-center text-xl font-bold text-slate-900">
+                            Guardar cotizaciones estará disponible pronto
+                        </h3>
+                        <p className="mb-6 text-center text-sm leading-relaxed text-slate-600">
+                            Esta función estará disponible cuando se active el sistema de cuentas. Pronto podrás iniciar sesión, guardar cotizaciones, organizarlas por courier, fecha y descargarlas desde un panel personal.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setShowSaveModal(false)}
+                            className="flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
+                        >
+                            Entendido
+                        </button>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
