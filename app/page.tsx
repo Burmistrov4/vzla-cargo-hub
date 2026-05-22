@@ -5,6 +5,7 @@ import {
     useId,
     useMemo,
     useState,
+    useRef,
     type FocusEvent,
     type FormEvent,
 } from "react";
@@ -747,6 +748,7 @@ export default function Home() {
         Partial<Record<NumericField, string>>
     >({});
     const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     
     const activeChargesSummary = useMemo(() => {
         const active = [];
@@ -3004,13 +3006,22 @@ export default function Home() {
             </div>
 
             <footer className="mt-6 sm:mt-10 rounded-3xl sm:rounded-[2rem] border border-slate-200 bg-white px-5 sm:px-6 py-6 shadow-sm">
-                <div className="flex flex-col gap-2 text-center text-sm text-slate-600">
-                    <p className="font-semibold text-slate-900">
-                        © 2026 Vzla Cargo Hub. Desarrollado por Lorenzo Valentin Roca Burmistrow.
-                    </p>
-                    <p>
-                        Herramienta referencial para estimación de cotizaciones. Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.
-                    </p>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left text-sm text-slate-600">
+                    <div>
+                        <p className="font-semibold text-slate-900">
+                            © 2026 Vzla Cargo Hub. Desarrollado por Lorenzo Valentin Roca Burmistrow.
+                        </p>
+                        <p className="mt-1">
+                            Herramienta referencial para estimación de cotizaciones. Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowFeedbackModal(true)}
+                        className="inline-flex items-center justify-center rounded-2xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 hover:text-blue-800"
+                    >
+                        Reportar mejora o problema
+                    </button>
                 </div>
             </footer>
 
@@ -3038,6 +3049,331 @@ export default function Home() {
                     </div>
                 </div>
             )}
+
+            {showFeedbackModal && (
+                <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
+            )}
         </main>
+    );
+}
+
+function FeedbackModal({ onClose }: { onClose: () => void }) {
+    const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+    const [message, setMessage] = useState("");
+    const [files, setFiles] = useState<File[]>([]);
+    const [requestType, setRequestType] = useState("Sugerencia de mejora");
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [honeypot, setHoneypot] = useState("");
+    const [textBody, setTextBody] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
+    const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".pdf", ".xls", ".xlsx", ".csv"];
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        const newFiles = Array.from(e.target.files);
+        
+        let validFiles = [...files];
+        let error = "";
+        
+        for (const file of newFiles) {
+            if (validFiles.length >= 7) {
+                error = "Máximo 7 archivos permitidos.";
+                break;
+            }
+            if (file.size > 8 * 1024 * 1024) {
+                error = `El archivo ${file.name} supera los 8MB.`;
+                continue;
+            }
+            const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+            if (!allowedExtensions.includes(ext)) {
+                error = `La extensión ${ext} no está permitida.`;
+                continue;
+            }
+            validFiles.push(file);
+        }
+        
+        const totalSize = validFiles.reduce((acc, f) => acc + f.size, 0);
+        if (totalSize > 20 * 1024 * 1024) {
+            error = "El tamaño total supera los 20MB permitidos.";
+            validFiles = files; // revert
+        }
+        
+        setFiles(validFiles);
+        if (error) {
+            setErrorMsg(error);
+        } else {
+            setErrorMsg("");
+        }
+        
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+    
+    const removeFile = (index: number) => {
+        setFiles(files.filter((_, i) => i !== index));
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        
+        if (honeypot) {
+            // bot trap
+            setStatus("success");
+            setMessage("Sugerencia enviada correctamente.");
+            return;
+        }
+        
+        if (textBody.length < 15 || textBody.length > 7000) {
+            setErrorMsg("El mensaje debe tener entre 15 y 7000 caracteres.");
+            return;
+        }
+        
+        setStatus("loading");
+        setErrorMsg("");
+        
+        try {
+            const formData = new FormData();
+            formData.append("request_type", requestType);
+            formData.append("message", textBody);
+            if (name) formData.append("name", name);
+            if (email) formData.append("email", email);
+            if (honeypot) formData.append("honeypot", honeypot);
+            
+            files.forEach(f => {
+                formData.append("files", f);
+            });
+            
+            const response = await fetch(`${API_BASE}/feedback`, {
+                method: "POST",
+                body: formData,
+            });
+            
+            const data = await response.json().catch(() => ({}));
+            
+            if (!response.ok) {
+                if (response.status === 503) {
+                    throw new Error("El servicio de feedback no está disponible o no está configurado. Intenta más tarde.");
+                }
+                if (response.status === 429) {
+                    const retryAfter = response.headers.get("Retry-After");
+                    if (retryAfter) {
+                        throw new Error(`Demasiadas solicitudes. Intenta nuevamente en ${retryAfter} segundos.`);
+                    }
+                    throw new Error("Demasiadas solicitudes. Intenta nuevamente más tarde.");
+                }
+                throw new Error(data.detail || "Error al enviar la sugerencia.");
+            }
+            
+            setStatus("success");
+            setMessage(data.message || "Sugerencia enviada correctamente.");
+            setFiles([]);
+            setTextBody("");
+            
+        } catch (error) {
+            setStatus("error");
+            setErrorMsg(error instanceof Error ? error.message : "Ocurrió un error inesperado.");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pb-[env(safe-area-inset-bottom)] bg-slate-900/50 backdrop-blur-sm">
+            <div className="flex flex-col w-full max-w-2xl max-h-[calc(100dvh-24px)] rounded-3xl bg-white shadow-2xl relative overflow-hidden">
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/90 p-6 pb-4 backdrop-blur-md">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 select-none">Reportar mejora o problema</h2>
+                    <button
+                        onClick={onClose}
+                        className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"
+                        disabled={status === "loading"}
+                    >
+                        ✕
+                    </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6">
+                {status === "success" ? (
+                    <div className="text-center py-8 h-full flex flex-col justify-center items-center">
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                            ✓
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">¡Gracias por tu mensaje!</h3>
+                        <p className="text-slate-600 select-none">{message}</p>
+                        <button
+                            onClick={onClose}
+                            className="mt-6 rounded-2xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="space-y-5" id="feedback-form">
+                        {errorMsg && (
+                            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                {errorMsg}
+                            </div>
+                        )}
+                        
+                        {/* Honeypot */}
+                        <div className="hidden" aria-hidden="true">
+                            <label htmlFor="website_url">Website URL</label>
+                            <input 
+                                type="text" 
+                                id="website_url" 
+                                name="website_url"
+                                tabIndex={-1}
+                                autoComplete="off"
+                                value={honeypot}
+                                onChange={(e) => setHoneypot(e.target.value)} 
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-1">
+                                Tipo de solicitud <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                value={requestType}
+                                onChange={(e) => setRequestType(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                required
+                            >
+                                <option value="Sugerencia de mejora">Sugerencia de mejora</option>
+                                <option value="Error o bug">Error o bug</option>
+                                <option value="Problema con una cotización">Problema con una cotización</option>
+                                <option value="Problema visual / responsive">Problema visual / responsive</option>
+                                <option value="Solicitud de nuevo courier">Solicitud de nuevo courier</option>
+                                <option value="Problema con tarifas">Problema con tarifas</option>
+                                <option value="Problema con WhatsApp / CSV">Problema con WhatsApp / CSV</option>
+                                <option value="Solicitud comercial">Solicitud comercial</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                        
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-900 mb-1">
+                                    Nombre (Opcional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-900 mb-1">
+                                    Correo / Contacto (Opcional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-semibold text-slate-900">
+                                    Mensaje <span className="text-red-500">*</span>
+                                </label>
+                                <span className={`text-xs ${textBody.length > 7000 ? 'text-red-500 font-bold' : 'text-slate-500'}`}>
+                                    {textBody.length} / 7000
+                                </span>
+                            </div>
+                            <textarea
+                                value={textBody}
+                                onChange={(e) => setTextBody(e.target.value)}
+                                required
+                                minLength={15}
+                                maxLength={7000}
+                                rows={5}
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                                placeholder="Describe aquí tu sugerencia, problema o solicitud (mín. 15 caracteres)..."
+                            ></textarea>
+                            <p className="mt-1 text-xs text-amber-600 font-medium">
+                                No incluyas contraseñas, datos bancarios ni información sensible.
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-2">
+                                Archivos adjuntos (Opcional)
+                            </label>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {files.map((file, i) => (
+                                    <div key={i} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700">
+                                        <span className="truncate max-w-[150px]">{file.name}</span>
+                                        <span className="text-slate-400">({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(i)}
+                                            className="ml-1 text-red-500 hover:text-red-700 font-bold"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={files.length >= 7}
+                                className="inline-flex items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                + Agregar archivos
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                multiple
+                                className="hidden"
+                                accept=".png,.jpg,.jpeg,.webp,.pdf,.xls,.xlsx,.csv"
+                            />
+                            <p className="mt-2 text-xs text-slate-500">
+                                Máximo 7 archivos, 8MB c/u y 20MB en total. Formatos: imágenes, pdf, excel, csv.
+                            </p>
+                        </div>
+                    </form>
+                )}
+                </div>
+                
+                {status !== "success" && (
+                    <div className="sticky bottom-0 z-10 border-t border-slate-100 bg-white/90 p-6 pt-4 backdrop-blur-md flex justify-end gap-3 rounded-b-3xl">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={status === "loading"}
+                            className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            form="feedback-form"
+                            disabled={status === "loading"}
+                            className="rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {status === "loading" ? "Enviando..." : "Enviar reporte"}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
