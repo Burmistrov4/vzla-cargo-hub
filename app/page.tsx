@@ -10,7 +10,13 @@ import {
 } from "react";
 
 const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://vzla-cargo-hub-backend-production.up.railway.app";
+    (
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        "https://vzla-cargo-hub-backend.onrender.com"
+    ).replace(/\/$/, "");
+
+const LEGACY_RAILWAY_API_BASE =
+    "https://vzla-cargo-hub-backend-production.up.railway.app";
 
 type CourierCode = "" | "owc" | "zoom";
 type ServiceType = "" | "air" | "sea";
