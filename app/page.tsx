@@ -333,12 +333,12 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function regionLabel(region: RegionType) {
-    return region === "region_central" ? "Región central" : "Resto del país";
+    return region === "region_central" ? "RegiÃƒÆ’Ã‚Â³n central" : "Resto del paÃƒÆ’Ã‚Â­s";
 }
 
 function serviceLabel(service: ServiceType | string) {
-    if (service === "air") return "Aéreo";
-    if (service === "sea") return "Marítimo";
+    if (service === "air") return "AÃƒÆ’Ã‚Â©reo";
+    if (service === "sea") return "MarÃƒÆ’Ã‚Â­timo";
     return "Sin seleccionar";
 }
 
@@ -629,7 +629,7 @@ function normalizeQuoteResponse(input: unknown): QuoteResponse {
             charge_unit: String(
                 quote.charge_unit ??
                 (String(root.service_type ?? quote.service_type) === "sea"
-                    ? "ft³"
+                    ? "ftÃƒâ€šÃ‚Â³"
                     : "lb")
             ),
             chargeable_units_exact: safeNumber(quote.chargeable_units_exact),
@@ -749,6 +749,16 @@ export default function Home() {
     >({});
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
+    // Keep-alive: ping backend every 13 min to prevent Render cold starts
+    useEffect(() => {
+        const ping = () => {
+            fetch(`/health`, { method: "GET" }).catch(() => {});
+        };
+        ping();
+        const intervalId = setInterval(ping, 13 * 60 * 1000);
+        return () => clearInterval(intervalId);
+    }, []);
     
     const activeChargesSummary = useMemo(() => {
         const active = [];
@@ -966,7 +976,7 @@ export default function Home() {
                     throw new Error(
                         typeof data?.detail === "string"
                             ? data.detail
-                            : "No se pudo verificar el artículo en OWC."
+                            : "No se pudo verificar el artÃƒÆ’Ã‚Â­culo en OWC."
                     );
                 }
 
@@ -977,7 +987,7 @@ export default function Home() {
                     setOwcRestrictedError(
                         err instanceof Error
                             ? err.message
-                            : "Error verificando artículos OWC."
+                            : "Error verificando artÃƒÆ’Ã‚Â­culos OWC."
                     );
                 }
             } finally {
@@ -1228,13 +1238,13 @@ export default function Home() {
             const data = await response.json();
 
             if (!response.ok) {
-                let detail = "No se pudo calcular la cotización";
+                let detail = "No se pudo calcular la cotizaciÃƒÆ’Ã‚Â³n";
 
                 if (typeof data?.detail === "string") {
                     detail = data.detail;
                 } else if (Array.isArray(data?.detail)) {
                     detail = data.detail
-                        .map((item: { msg?: string }) => item?.msg ?? "Error de validación")
+                        .map((item: { msg?: string }) => item?.msg ?? "Error de validaciÃƒÆ’Ã‚Â³n")
                         .join(" | ");
                 }
 
@@ -1246,7 +1256,7 @@ export default function Home() {
             setLastQuoteSnapshot(quoteSnapshot);
         } catch (err) {
             const message =
-                err instanceof Error ? err.message : "Ocurrió un error inesperado";
+                err instanceof Error ? err.message : "OcurriÃƒÆ’Ã‚Â³ un error inesperado";
             setError(message);
             setResult(null);
             setLastQuoteSnapshot(null);
@@ -1291,8 +1301,8 @@ export default function Home() {
                     title: "Repack disponible",
                     message:
                         serviceType === "air"
-                            ? "Esta cotización cumple el mínimo aéreo de 5 lb. Puedes activar Repack fee si necesitas reempaque."
-                            : "Esta cotización cumple el mínimo marítimo de 3 ft³. Puedes activar Repack fee si necesitas reempaque.",
+                            ? "Esta cotizaciÃƒÆ’Ã‚Â³n cumple el mÃƒÆ’Ã‚Â­nimo aÃƒÆ’Ã‚Â©reo de 5 lb. Puedes activar Repack fee si necesitas reempaque."
+                            : "Esta cotizaciÃƒÆ’Ã‚Â³n cumple el mÃƒÆ’Ã‚Â­nimo marÃƒÆ’Ã‚Â­timo de 3 ftÃƒâ€šÃ‚Â³. Puedes activar Repack fee si necesitas reempaque.",
                 };
             }
 
@@ -1301,8 +1311,8 @@ export default function Home() {
                 title: "Aviso sobre repack",
                 message:
                     serviceType === "air"
-                        ? "Repack no aplica todavía en aéreo. Mínimo comercial: 5 lb."
-                        : "Repack no aplica todavía en marítimo. Mínimo comercial: 3 ft³.",
+                        ? "Repack no aplica todavÃƒÆ’Ã‚Â­a en aÃƒÆ’Ã‚Â©reo. MÃƒÆ’Ã‚Â­nimo comercial: 5 lb."
+                        : "Repack no aplica todavÃƒÆ’Ã‚Â­a en marÃƒÆ’Ã‚Â­timo. MÃƒÆ’Ã‚Â­nimo comercial: 3 ftÃƒâ€šÃ‚Â³.",
             };
         })()
         : null;
@@ -1323,44 +1333,44 @@ export default function Home() {
         const metrics = result.quote?.raw_metrics ?? EMPTY_RAW_METRICS;
 
         const rows: Array<Array<string | number | boolean | null | undefined>> = [
-            ["Sección", "Campo", "Valor", "Extra"],
-            ["Resumen", "Código", savedQuote?.shipment_code ?? "", ""],
+            ["SecciÃƒÆ’Ã‚Â³n", "Campo", "Valor", "Extra"],
+            ["Resumen", "CÃƒÆ’Ã‚Â³digo", savedQuote?.shipment_code ?? "", ""],
             ["Resumen", "Shipment ID", savedQuote?.shipment_id ?? "", ""],
             ["Resumen", "Courier", result.courier, result.courier_code],
             ["Resumen", "Servicio", result.service_type, ""],
-            ["Resumen", "Región", regionLabel(form.region), ""],
+            ["Resumen", "RegiÃƒÆ’Ã‚Â³n", regionLabel(form.region), ""],
             ["Resumen", "Delivery", deliveryLabel(form.delivery_type), ""],
             ["Resumen", "Tasa BCV usada", result.exchange_rate_used, ""],
-            ["Resumen", "Base de cálculo", exportBasis, ""],
+            ["Resumen", "Base de cÃƒÆ’Ã‚Â¡lculo", exportBasis, ""],
             ["Resumen", "Tracking count", form.tracking_count, ""],
             ["Resumen", "Cantidad total de paquetes", form.total_same_item_qty, ""],
 
             ["Entrada", "Valor declarado USD", form.declared_value_usd, ""],
             ["Entrada", "Peso total lb", form.total_weight_lb, ""],
             ["Entrada", "Peso total kg", form.total_weight_kg, ""],
-            ["Entrada", "Volumen total ft³", form.total_volume_ft3, ""],
+            ["Entrada", "Volumen total ftÃƒâ€šÃ‚Â³", form.total_volume_ft3, ""],
             ["Entrada", "Largo in", form.length_in, ""],
             ["Entrada", "Ancho in", form.width_in, ""],
             ["Entrada", "Alto in", form.height_in, ""],
 
             ["Flags", "Handling fee", form.enable_handling_fee, ""],
             ["Flags", "Repack fee", form.enable_repack_fee, ""],
-            ["Flags", "Prealerta repack válida", form.repack_prealert_valid, ""],
-            ["Flags", "Compactación", form.compactation_requested, ""],
+            ["Flags", "Prealerta repack vÃƒÆ’Ã‚Â¡lida", form.repack_prealert_valid, ""],
+            ["Flags", "CompactaciÃƒÆ’Ã‚Â³n", form.compactation_requested, ""],
             ["Flags", "Modo storage/hold", holdModeLabel(effectiveHoldMode), ""],
-            ["Flags", "Días en hold", form.hold_days, ""],
+            ["Flags", "DÃƒÆ’Ã‚Â­as en hold", form.hold_days, ""],
             ["Flags", "Seguro 5%", form.use_insurance, ""],
             ["Flags", "Purchase by order", form.use_purchase_by_order, ""],
             ["Flags", "Impuesto provisional", effectiveApplyProvisionalCustoms, ""],
 
-            ["Métricas", "Peso final", result.quote.chargeable_units_display, result.quote.charge_unit],
-            ["Métricas", "Peso cobrable exacto", result.quote.chargeable_units_exact, result.quote.charge_unit],
-            ["Métricas", "Volumen visible ft³", metrics.display_volume_ft3, ""],
-            ["Métricas", "Volumen real ft³", metrics.raw_volume_ft3, ""],
-            ["Métricas", "Base flete marítimo ft³", metrics.sea_freight_volume_ft3 ?? "", ""],
-            ["Métricas", "Base storage ft³", metrics.storage_chargeable_ft3, ""],
-            ["Métricas", "Peso real lb", metrics.real_weight_lb, ""],
-            ["Métricas", "Peso volumétrico lb", metrics.volumetric_weight_lb, ""],
+            ["MÃƒÆ’Ã‚Â©tricas", "Peso final", result.quote.chargeable_units_display, result.quote.charge_unit],
+            ["MÃƒÆ’Ã‚Â©tricas", "Peso cobrable exacto", result.quote.chargeable_units_exact, result.quote.charge_unit],
+            ["MÃƒÆ’Ã‚Â©tricas", "Volumen visible ftÃƒâ€šÃ‚Â³", metrics.display_volume_ft3, ""],
+            ["MÃƒÆ’Ã‚Â©tricas", "Volumen real ftÃƒâ€šÃ‚Â³", metrics.raw_volume_ft3, ""],
+            ["MÃƒÆ’Ã‚Â©tricas", "Base flete marÃƒÆ’Ã‚Â­timo ftÃƒâ€šÃ‚Â³", metrics.sea_freight_volume_ft3 ?? "", ""],
+            ["MÃƒÆ’Ã‚Â©tricas", "Base storage ftÃƒâ€šÃ‚Â³", metrics.storage_chargeable_ft3, ""],
+            ["MÃƒÆ’Ã‚Â©tricas", "Peso real lb", metrics.real_weight_lb, ""],
+            ["MÃƒÆ’Ã‚Â©tricas", "Peso volumÃƒÆ’Ã‚Â©trico lb", metrics.volumetric_weight_lb, ""],
 
             ["Desglose", "Flete", breakdown.freight_ves, breakdown.freight_usd],
             ["Desglose", "Handling", breakdown.handling_ves, breakdown.handling_usd],
@@ -1369,7 +1379,7 @@ export default function Home() {
             ["Desglose", "Repack", breakdown.repack_ves, breakdown.repack_usd],
             ["Desglose", "Storage", breakdown.storage_ves, breakdown.storage_usd],
             ["Desglose", "Compra por encargo", breakdown.purchase_service_ves, breakdown.purchase_service_usd],
-            ["Desglose", "Compactación", breakdown.compactation_fee_ves, breakdown.compactation_fee_usd],
+            ["Desglose", "CompactaciÃƒÆ’Ã‚Â³n", breakdown.compactation_fee_ves, breakdown.compactation_fee_usd],
             ["Desglose", "Packaging", breakdown.packaging_ves, breakdown.packaging_usd],
 
             ["Totales", "Total VES", result.quote.total_ves, ""],
@@ -1425,41 +1435,41 @@ export default function Home() {
         const originalTrackingCount = metrics.original_tracking_count ?? form.tracking_count;
 
         const lines = [
-            "Hola, comparto esta cotización generada en Vzla Cargo Hub para revisión:",
+            "Hola, comparto esta cotizaciÃƒÆ’Ã‚Â³n generada en Vzla Cargo Hub para revisiÃƒÆ’Ã‚Â³n:",
             "",
-            "📦 *DATOS DEL ENVÍO*",
+            "ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¦ *DATOS DEL ENVÃƒÆ’Ã‚ÂO*",
             `Courier: ${courierLabel(form.courier_code)}`,
             `Servicio: ${serviceLabel(effectiveServiceType)}`,
-            `Región: ${regionLabel(form.region)}`,
+            `RegiÃƒÆ’Ã‚Â³n: ${regionLabel(form.region)}`,
             `Delivery: Office`,
             `Tracking originales: ${originalTrackingCount}`,
             `Handling cobrable: ${effectiveHandlingCount}`,
-            flags.handling_consolidated_by_repack_prealert ? "Motivo: consolidado por prealerta/reempaque válido" : null,
+            flags.handling_consolidated_by_repack_prealert ? "Motivo: consolidado por prealerta/reempaque vÃƒÆ’Ã‚Â¡lido" : null,
             "",
-            "📐 *MEDIDAS Y PESO*",
+            "ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â *MEDIDAS Y PESO*",
             `Peso final: ${formatNumber(result.quote.chargeable_units_display, 2, 2)} ${result.quote.charge_unit}`,
-            `Volumen visible: ${formatNumber(metrics.display_volume_ft3, 2, 2)} ft³`,
-            `Volumen real: ${formatNumber(metrics.raw_volume_ft3, 2, 2)} ft³`,
-            `Base storage: ${formatNumber(metrics.storage_chargeable_ft3, 2, 2)} ft³`,
+            `Volumen visible: ${formatNumber(metrics.display_volume_ft3, 2, 2)} ftÃƒâ€šÃ‚Â³`,
+            `Volumen real: ${formatNumber(metrics.raw_volume_ft3, 2, 2)} ftÃƒâ€šÃ‚Â³`,
+            `Base storage: ${formatNumber(metrics.storage_chargeable_ft3, 2, 2)} ftÃƒâ€šÃ‚Â³`,
             "",
-            "💵 *DESGLOSE ESTIMADO*",
+            "ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Âµ *DESGLOSE ESTIMADO*",
             `Flete: ${formatMoneyBs(breakdown.freight_ves, 2)} | ${formatMoneyUsd(breakdown.freight_usd, 2)}`,
             `Handling x${effectiveHandlingCount}: ${formatMoneyBs(breakdown.handling_ves, 2)} | ${formatMoneyUsd(breakdown.handling_usd, 2)}`,
-            breakdown.repack_usd > 0 ? `Repack fee único: ${formatMoneyBs(breakdown.repack_ves, 2)} | ${formatMoneyUsd(breakdown.repack_usd, 2)}` : null,
+            breakdown.repack_usd > 0 ? `Repack fee ÃƒÆ’Ã‚Âºnico: ${formatMoneyBs(breakdown.repack_ves, 2)} | ${formatMoneyUsd(breakdown.repack_usd, 2)}` : null,
             breakdown.storage_usd > 0 ? `Storage: ${formatMoneyBs(breakdown.storage_ves, 2)} | ${formatMoneyUsd(breakdown.storage_usd, 2)}` : null,
             breakdown.insurance_usd > 0 ? `Seguro: ${formatMoneyBs(breakdown.insurance_ves, 2)} | ${formatMoneyUsd(breakdown.insurance_usd, 2)}` : null,
             breakdown.customs_tax_usd > 0 ? `Impuestos: ${formatMoneyBs(breakdown.customs_tax_ves, 2)} | ${formatMoneyUsd(breakdown.customs_tax_usd, 2)}` : null,
             "",
-            "✅ *TOTAL ESTIMADO*",
+            "ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ *TOTAL ESTIMADO*",
             `*Total USD: ${formatMoneyUsd(result.quote.total_usd, 2)}*`,
             `Total VES: ${formatMoneyBs(result.quote.total_ves, 2)}`,
             `Tasa BCV usada: ${formatNumber(result.exchange_rate_used, 4, 4)}`,
             "",
-            "📝 *NOTAS*",
-            "- Cotización estimada sujeta a validación del courier.",
-            "- Repack fee es un cargo único estimado.",
-            "- La exoneración de storage por prealerta depende de que el courier valide que fue emitida a tiempo.",
-            "- Si la carga permanece muchos días en Miami, pueden aplicar ajustes o cargos adicionales según políticas del courier.",
+            "ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â *NOTAS*",
+            "- CotizaciÃƒÆ’Ã‚Â³n estimada sujeta a validaciÃƒÆ’Ã‚Â³n del courier.",
+            "- Repack fee es un cargo ÃƒÆ’Ã‚Âºnico estimado.",
+            "- La exoneraciÃƒÆ’Ã‚Â³n de storage por prealerta depende de que el courier valide que fue emitida a tiempo.",
+            "- Si la carga permanece muchos dÃƒÆ’Ã‚Â­as en Miami, pueden aplicar ajustes o cargos adicionales segÃƒÆ’Ã‚Âºn polÃƒÆ’Ã‚Â­ticas del courier.",
             "",
             "_Generado desde Vzla Cargo Hub._",
         ].filter(line => line !== null);
@@ -1469,7 +1479,7 @@ export default function Home() {
 
     function handleSendWhatsApp() {
         if (!result) {
-            setError("Primero calcula una cotización antes de enviarla por WhatsApp.");
+            setError("Primero calcula una cotizaciÃƒÆ’Ã‚Â³n antes de enviarla por WhatsApp.");
             return;
         }
 
@@ -1505,7 +1515,7 @@ export default function Home() {
     );
     const technicalHoldModeLabel = (() => {
         if (resultHoldMode === "repack" && storageExemptionApplied) {
-            return "Prealerta repack válida: storage exonerado";
+            return "Prealerta repack vÃƒÆ’Ã‚Â¡lida: storage exonerado";
         }
 
         if (resultHoldMode === "repack") {
@@ -1539,8 +1549,8 @@ export default function Home() {
             minFt3: safeNumber(resultFlags.storage_charge_min_ft3, safeNumber(resultMetrics.storage_charge_min_ft3)),
             rateLabel:
                 storageFeeCurrency === "USD"
-                    ? `${formatMoneyUsd(storageFeeUsd, 2)}/ft³/día`
-                    : `${formatMoneyBs(storageFeeVes, 2)}/ft³/día`,
+                    ? `${formatMoneyUsd(storageFeeUsd, 2)}/ftÃƒâ€šÃ‚Â³/dÃƒÆ’Ã‚Â­a`
+                    : `${formatMoneyBs(storageFeeVes, 2)}/ftÃƒâ€šÃ‚Â³/dÃƒÆ’Ã‚Â­a`,
             exchangeRate: safeNumber(result.quote.exchange_rate_used, result.exchange_rate_used),
             totalVes: safeNumber(resultBreakdown.storage_ves),
             totalUsd: safeNumber(resultBreakdown.storage_usd),
@@ -1558,9 +1568,9 @@ export default function Home() {
         if (effectiveHoldMode === "repack" && form.repack_prealert_valid) {
             return {
                 tone: "success" as const,
-                title: "Storage exonerado por prealerta repack válida",
+                title: "Storage exonerado por prealerta repack vÃƒÆ’Ã‚Â¡lida",
                 message:
-                    "La exoneración se estima porque confirmaste que la prealerta de reempaque fue emitida correctamente y a tiempo.",
+                    "La exoneraciÃƒÆ’Ã‚Â³n se estima porque confirmaste que la prealerta de reempaque fue emitida correctamente y a tiempo.",
             };
         }
 
@@ -1569,7 +1579,7 @@ export default function Home() {
                 tone: "warning" as const,
                 title: "Prealerta repack no confirmada",
                 message:
-                    "No se debe exonerar storage automáticamente. Si el reempaque se solicitó después de la llegada a Miami, OWC puede cobrar storage después de los 3 días hábiles libres.",
+                    "No se debe exonerar storage automÃƒÆ’Ã‚Â¡ticamente. Si el reempaque se solicitÃƒÆ’Ã‚Â³ despuÃƒÆ’Ã‚Â©s de la llegada a Miami, OWC puede cobrar storage despuÃƒÆ’Ã‚Â©s de los 3 dÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles libres.",
             };
         }
 
@@ -1577,7 +1587,7 @@ export default function Home() {
             return {
                 tone: "warning" as const,
                 title: "Storage aplicable",
-                message: `Se estiman ${formatNumber(chargedDays, 0, 0)} días hábiles cobrables después de los 3 días hábiles libres. El monto depende de la base ft³, tarifa storage y tasa BCV.`,
+                message: `Se estiman ${formatNumber(chargedDays, 0, 0)} dÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles cobrables despuÃƒÆ’Ã‚Â©s de los 3 dÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles libres. El monto depende de la base ftÃƒâ€šÃ‚Â³, tarifa storage y tasa BCV.`,
             };
         }
 
@@ -1586,14 +1596,14 @@ export default function Home() {
                 tone: "info" as const,
                 title: "Hold dentro del plazo libre",
                 message:
-                    "OWC permite 3 días hábiles antes de estimar Storage Fee.",
+                    "OWC permite 3 dÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles antes de estimar Storage Fee.",
             };
         }
 
         return {
             tone: "muted" as const,
             title: "Storage no estimado",
-            message: "No hay días de hold activos. No se estima Storage Fee.",
+            message: "No hay dÃƒÆ’Ã‚Â­as de hold activos. No se estima Storage Fee.",
         };
     })();
     const showRepackStorageWarning =
@@ -1619,7 +1629,7 @@ export default function Home() {
                             FastAPI + Next.js
                         </span>
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                            Cálculo comercial
+                            CÃƒÆ’Ã‚Â¡lculo comercial
                         </span>
                     </div>
 
@@ -1630,7 +1640,7 @@ export default function Home() {
                             </h1>
 
                             <p className="mt-2 sm:mt-4 max-w-3xl text-sm sm:text-lg lg:text-xl leading-6 sm:leading-9 text-slate-700">
-                                Calcula envíos con reglas reales del courier, peso final,
+                                Calcula envÃƒÆ’Ã‚Â­os con reglas reales del courier, peso final,
                                 volumen visible y desglose detallado.
                             </p>
 
@@ -1642,7 +1652,7 @@ export default function Home() {
                                     Servicio: {serviceLabel(effectiveServiceType)}
                                 </span>
                                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                                    Región: {regionLabel(form.region)}
+                                    RegiÃƒÆ’Ã‚Â³n: {regionLabel(form.region)}
                                 </span>
                                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
                                     Delivery: {deliveryLabel(form.delivery_type)}
@@ -1669,7 +1679,7 @@ export default function Home() {
                                         </div>
                                     )}
 
-                                    <div className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400 font-medium">USD → VES</div>
+                                    <div className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400 font-medium">USD ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ VES</div>
                                 </div>
                             </div>
                         </div>
@@ -1684,10 +1694,10 @@ export default function Home() {
                         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                             <div>
                                 <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
-                                    Formulario de cotización
+                                    Formulario de cotizaciÃƒÆ’Ã‚Â³n
                                 </h2>
                                 <p className="mt-1 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 text-slate-600">
-                                    Completa los datos del paquete para estimar el costo del envío.
+                                    Completa los datos del paquete para estimar el costo del envÃƒÆ’Ã‚Â­o.
                                 </p>
                             </div>
                             {form.courier_code === "owc" && (
@@ -1772,7 +1782,7 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <FieldHelpLabel help={isZoom ? "Tipo de servicio seleccionado para la cotización Zoom. Actualmente puede estar limitado por el motor disponible." : "Selecciona entre Aéreo o Marítimo."}>
+                                <FieldHelpLabel help={isZoom ? "Tipo de servicio seleccionado para la cotizaciÃƒÆ’Ã‚Â³n Zoom. Actualmente puede estar limitado por el motor disponible." : "Selecciona entre AÃƒÆ’Ã‚Â©reo o MarÃƒÆ’Ã‚Â­timo."}>
                                     {isZoom ? "Servicio Zoom" : "Servicio"}
                                 </FieldHelpLabel>
                                 <select
@@ -1784,16 +1794,16 @@ export default function Home() {
                                     disabled={isZoom}
                                 >
                                     <option value="">Selecciona un servicio</option>
-                                    <option value="air">Aéreo</option>
+                                    <option value="air">AÃƒÆ’Ã‚Â©reo</option>
                                     <option value="sea" disabled={form.courier_code === "zoom"}>
-                                        Marítimo
+                                        MarÃƒÆ’Ã‚Â­timo
                                     </option>
                                 </select>
                             </label>
 
                             {!isZoom ? (
                             <label className="space-y-2">
-                                <span className="text-sm font-medium text-slate-700">Región</span>
+                                <span className="text-sm font-medium text-slate-700">RegiÃƒÆ’Ã‚Â³n</span>
                                 <select
                                     className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     value={form.region}
@@ -1802,14 +1812,14 @@ export default function Home() {
                                         updateForm("region", e.target.value as RegionType)
                                     }
                                 >
-                                    <option value="region_central">Región central</option>
-                                    <option value="resto_pais">Resto del país</option>
+                                    <option value="region_central">RegiÃƒÆ’Ã‚Â³n central</option>
+                                    <option value="resto_pais">Resto del paÃƒÆ’Ã‚Â­s</option>
                                 </select>
                             </label>
                             ) : null}
 
                             <label className="space-y-2">
-                                <FieldHelpLabel help={isZoom ? "Modalidad de entrega. Oficina significa retiro o entrega según la regla configurada para Zoom." : "Esta opción indica cómo deseas recibir o gestionar la entrega en Venezuela. Por ahora, Office es la única modalidad de entrega calculada."}>
+                                <FieldHelpLabel help={isZoom ? "Modalidad de entrega. Oficina significa retiro o entrega segÃƒÆ’Ã‚Âºn la regla configurada para Zoom." : "Esta opciÃƒÆ’Ã‚Â³n indica cÃƒÆ’Ã‚Â³mo deseas recibir o gestionar la entrega en Venezuela. Por ahora, Office es la ÃƒÆ’Ã‚Âºnica modalidad de entrega calculada."}>
                                     {isZoom ? "Entrega" : "Delivery type"}
                                 </FieldHelpLabel>
                                 <div className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-700 font-medium">
@@ -1818,7 +1828,7 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <FieldHelpLabel help={isZoom ? "Valor referencial de la mercancía. Puede usarse para protección, seguro o validaciones futuras." : "Valor total de la mercancía para efectos de seguro o aduana."}>
+                                <FieldHelpLabel help={isZoom ? "Valor referencial de la mercancÃƒÆ’Ã‚Â­a. Puede usarse para protecciÃƒÆ’Ã‚Â³n, seguro o validaciones futuras." : "Valor total de la mercancÃƒÆ’Ã‚Â­a para efectos de seguro o aduana."}>
                                     Valor declarado USD
                                 </FieldHelpLabel>
                                 <input
@@ -1843,7 +1853,7 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <FieldHelpLabel help={isZoom ? "Peso real del paquete en kilogramos. Zoom puede usar este dato como base principal de cálculo." : "Peso físico del paquete en libras."}>
+                                <FieldHelpLabel help={isZoom ? "Peso real del paquete en kilogramos. Zoom puede usar este dato como base principal de cÃƒÆ’Ã‚Â¡lculo." : "Peso fÃƒÆ’Ã‚Â­sico del paquete en libras."}>
                                     {isZoom ? "Peso fisico (kg)" : "Peso total (lb)"}
                                 </FieldHelpLabel>
                                 <input
@@ -1872,7 +1882,7 @@ export default function Home() {
                             {isZoom ? (
                                 <>
                                     <label className="space-y-2">
-                                        <FieldHelpLabel help="Indica si deseas agrupar varios paquetes en una sola cotización cuando el servicio lo permita.">
+                                        <FieldHelpLabel help="Indica si deseas agrupar varios paquetes en una sola cotizaciÃƒÆ’Ã‚Â³n cuando el servicio lo permita.">
                                             Consolidar encomiendas
                                         </FieldHelpLabel>
                                         <select
@@ -1971,7 +1981,7 @@ export default function Home() {
                             </label>
 
                             <label className="space-y-2">
-                                <FieldHelpLabel help="Cantidad de paquetes, cajas o tracking numbers que entran al almacén de Miami. Algunos cargos como Handling Fee se aplican por tracking/caja. Storage también puede variar por paquete según el caso real de OWC.">
+                                <FieldHelpLabel help="Cantidad de paquetes, cajas o tracking numbers que entran al almacÃƒÆ’Ã‚Â©n de Miami. Algunos cargos como Handling Fee se aplican por tracking/caja. Storage tambiÃƒÆ’Ã‚Â©n puede variar por paquete segÃƒÆ’Ã‚Âºn el caso real de OWC.">
                                     Tracking count
                                 </FieldHelpLabel>
                                 <input
@@ -1996,7 +2006,7 @@ export default function Home() {
 
                             <label className="space-y-2 md:col-span-2">
                                 <span className="text-sm font-medium text-slate-700">
-                                    Cantidad total del mismo artículo
+                                    Cantidad total del mismo artÃƒÆ’Ã‚Â­culo
                                 </span>
                                 <input
                                     type="text"
@@ -2028,11 +2038,11 @@ export default function Home() {
                                 <div className="flex items-start justify-between gap-4">
                                     <div>
                                         <h3 className="text-xl font-black text-slate-950">
-                                            Verificador de artículos OWC
+                                            Verificador de artÃƒÆ’Ã‚Â­culos OWC
                                         </h3>
                                         <p className="mt-2 text-sm leading-6 text-slate-700">
-                                            Consulta si el artículo aparece como prohibido, restringido o bajo
-                                            régimen especial según las reglas actuales de One Way Cargo.
+                                            Consulta si el artÃƒÆ’Ã‚Â­culo aparece como prohibido, restringido o bajo
+                                            rÃƒÆ’Ã‚Â©gimen especial segÃƒÆ’Ã‚Âºn las reglas actuales de One Way Cargo.
                                         </p>
                                     </div>
 
@@ -2046,13 +2056,13 @@ export default function Home() {
                                 </div>
 
                                 <label className="mt-5 block text-sm font-medium text-slate-900">
-                                    ¿Qué estás enviando?
+                                    Ãƒâ€šÃ‚Â¿QuÃƒÆ’Ã‚Â© estÃƒÆ’Ã‚Â¡s enviando?
                                 </label>
 
                                 <input
                                     value={owcItemQuery}
                                     onChange={(e) => setOwcItemQuery(e.target.value)}
-                                    placeholder="Ej: celular, teléfono, laptop, jeans, perfume, pastillas..."
+                                    placeholder="Ej: celular, telÃƒÆ’Ã‚Â©fono, laptop, jeans, perfume, pastillas..."
                                     className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base outline-none transition focus:border-slate-900 focus:ring-4 focus:ring-slate-200"
                                 />
 
@@ -2077,7 +2087,7 @@ export default function Home() {
                                                 owcRestrictedItems.matches.map((item, index) => {
                                                     const level = String(item.restriction_level || "").toLowerCase();
                                                     const isProhibited = level.includes("prohibited") || item.action === "block";
-                                                    const displayLevel = item.display_level ?? (isProhibited ? "Prohibido" : "Régimen especial");
+                                                    const displayLevel = item.display_level ?? (isProhibited ? "Prohibido" : "RÃƒÆ’Ã‚Â©gimen especial");
                                                     const sourceUrl = item.source_url ?? owcRestrictedItems.source_url ?? "https://onewaycargo.net/articulos-prohibidos";
 
                                                     return (
@@ -2095,7 +2105,7 @@ export default function Home() {
                                                                     </p>
 
                                                                     <p className="mt-2 text-sm text-slate-800">
-                                                                        <span className="font-bold">Razón:</span>{" "}
+                                                                        <span className="font-bold">RazÃƒÆ’Ã‚Â³n:</span>{" "}
                                                                         {item.reason || item.category_label || "Regla especial OWC"}
                                                                     </p>
 
@@ -2120,13 +2130,13 @@ export default function Home() {
                                                             <p className="mt-3 text-sm leading-6 text-slate-700">
                                                                 {item.user_message ||
                                                                     (isProhibited
-                                                                        ? "Este artículo aparece como no permitido por OWC. No se recomienda enviarlo sin confirmación oficial del courier."
-                                                                        : "Este artículo puede requerir validación previa. Consulta con OWC antes de enviarlo, especialmente si son varias unidades, alto valor o uso comercial.")}
+                                                                        ? "Este artÃƒÆ’Ã‚Â­culo aparece como no permitido por OWC. No se recomienda enviarlo sin confirmaciÃƒÆ’Ã‚Â³n oficial del courier."
+                                                                        : "Este artÃƒÆ’Ã‚Â­culo puede requerir validaciÃƒÆ’Ã‚Â³n previa. Consulta con OWC antes de enviarlo, especialmente si son varias unidades, alto valor o uso comercial.")}
                                                             </p>
 
                                                             {item.recommendation ? (
                                                                 <p className="mt-2 text-sm leading-6 text-slate-700">
-                                                                    <span className="font-bold">Recomendación:</span>{" "}
+                                                                    <span className="font-bold">RecomendaciÃƒÆ’Ã‚Â³n:</span>{" "}
                                                                     {item.recommendation}
                                                                 </p>
                                                             ) : null}
@@ -2154,8 +2164,8 @@ export default function Home() {
                                                         Sin coincidencias en reglas OWC actuales
                                                     </p>
                                                     <p className="mt-1">
-                                                        No se encontraron restricciones para “{owcItemQuery}”.
-                                                        Esto no garantiza que esté permitido; verifica manualmente si tienes dudas.
+                                                        No se encontraron restricciones para ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ{owcItemQuery}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â.
+                                                        Esto no garantiza que estÃƒÆ’Ã‚Â© permitido; verifica manualmente si tienes dudas.
                                                     </p>
                                                 </div>
                                             )}
@@ -2173,7 +2183,7 @@ export default function Home() {
                             <summary className="cursor-pointer outline-none">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-lg font-semibold text-slate-900">Cargos y servicios adicionales</h3>
-                                    <span className="transition-transform group-open:rotate-180 text-slate-500">▼</span>
+                                    <span className="transition-transform group-open:rotate-180 text-slate-500">ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¼</span>
                                 </div>
                                 <div className="mt-1 text-xs sm:text-sm text-slate-500 group-open:hidden">
                                     Handling, repack, seguro y otros cargos.
@@ -2185,7 +2195,7 @@ export default function Home() {
 
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <p className="text-sm leading-7 text-slate-600">
-                                    Activa solo las opciones que apliquen a esta cotización. Estas
+                                    Activa solo las opciones que apliquen a esta cotizaciÃƒÆ’Ã‚Â³n. Estas
                                     opciones simulan cargos o servicios adicionales como handling,
                                     reempaque, almacenaje, seguro o compra por encargo.
                                 </p>
@@ -2193,8 +2203,8 @@ export default function Home() {
                                 <div className="mt-5 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                                 <OptionCard
                                     title="Handling fee"
-                                    description="Cargo operativo por guía o tracking recibido."
-                                    help="OWC cobra Handling Fee por cada caja/tracking que ingresa a su almacén de Miami. Si tienes 2 tracking numbers, el cargo puede aplicarse 2 veces."
+                                    description="Cargo operativo por guÃƒÆ’Ã‚Â­a o tracking recibido."
+                                    help="OWC cobra Handling Fee por cada caja/tracking que ingresa a su almacÃƒÆ’Ã‚Â©n de Miami. Si tienes 2 tracking numbers, el cargo puede aplicarse 2 veces."
                                     helpAlign="center"
                                     checked={form.enable_handling_fee}
                                     onChange={(checked) => updateForm("enable_handling_fee", checked)}
@@ -2203,7 +2213,7 @@ export default function Home() {
                                 <OptionCard
                                     title="Repack fee"
                                     description="Servicio de reempaque cuando OWC lo requiere."
-                                    help="Repack Fee cobra el servicio de reempaque. Es un cargo fijo estimado de $5,00 y aplica desde 5 lb en aéreo o 3 ft³ en marítimo. No exonera storage por sí solo; la exoneración corresponde al modo “Prealerta de reempaque válida”."
+                                    help="Repack Fee cobra el servicio de reempaque. Es un cargo fijo estimado de $5,00 y aplica desde 5 lb en aÃƒÆ’Ã‚Â©reo o 3 ftÃƒâ€šÃ‚Â³ en marÃƒÆ’Ã‚Â­timo. No exonera storage por sÃƒÆ’Ã‚Â­ solo; la exoneraciÃƒÆ’Ã‚Â³n corresponde al modo ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œPrealerta de reempaque vÃƒÆ’Ã‚Â¡lidaÃƒÂ¢Ã¢â€šÂ¬Ã‚Â."
                                     helpAlign="end"
                                     checked={form.enable_repack_fee}
                                     onChange={(checked) => updateForm("enable_repack_fee", checked)}
@@ -2211,8 +2221,8 @@ export default function Home() {
 
                                 <OptionCard
                                     title="Seguro 5%"
-                                    description="Protección opcional basada en el monto asegurado."
-                                    help="OWC recomienda asegurar la carga pagando 5% del monto que deseas asegurar. Por defecto esta app usa el valor declarado como referencia. Debe solicitarse antes de que la carga sea entregada a la aerolínea o naviera."
+                                    description="ProtecciÃƒÆ’Ã‚Â³n opcional basada en el monto asegurado."
+                                    help="OWC recomienda asegurar la carga pagando 5% del monto que deseas asegurar. Por defecto esta app usa el valor declarado como referencia. Debe solicitarse antes de que la carga sea entregada a la aerolÃƒÆ’Ã‚Â­nea o naviera."
                                     helpAlign="center"
                                     checked={form.use_insurance}
                                     onChange={(checked) => updateForm("use_insurance", checked)}
@@ -2221,7 +2231,7 @@ export default function Home() {
                                 <OptionCard
                                     title="Purchase by order"
                                     description="Servicio de compra por encargo."
-                                    help="Servicio tipo Personal Shopper. Según OWC, puede tener tarifa mínima de $20 para compras simples o desde $30 / 10% del monto facturado según el caso. Esta opción es una estimación y puede requerir validación con asesor."
+                                    help="Servicio tipo Personal Shopper. SegÃƒÆ’Ã‚Âºn OWC, puede tener tarifa mÃƒÆ’Ã‚Â­nima de $20 para compras simples o desde $30 / 10% del monto facturado segÃƒÆ’Ã‚Âºn el caso. Esta opciÃƒÆ’Ã‚Â³n es una estimaciÃƒÆ’Ã‚Â³n y puede requerir validaciÃƒÆ’Ã‚Â³n con asesor."
                                     helpAlign="end"
                                     checked={form.use_purchase_by_order}
                                     onChange={(checked) => updateForm("use_purchase_by_order", checked)}
@@ -2229,8 +2239,8 @@ export default function Home() {
 
                                 <OptionCard
                                     title="Impuesto provisional"
-                                    description="Se sugiere automáticamente según valor o cantidad."
-                                    help="La app lo sugiere si el valor declarado supera USD 200 o si hay 4 o más unidades del mismo artículo. Es una alerta preventiva; el tratamiento final puede depender del courier y revisión aduanal."
+                                    description="Se sugiere automÃƒÆ’Ã‚Â¡ticamente segÃƒÆ’Ã‚Âºn valor o cantidad."
+                                    help="La app lo sugiere si el valor declarado supera USD 200 o si hay 4 o mÃƒÆ’Ã‚Â¡s unidades del mismo artÃƒÆ’Ã‚Â­culo. Es una alerta preventiva; el tratamiento final puede depender del courier y revisiÃƒÆ’Ã‚Â³n aduanal."
                                     helpAlign="center"
                                     checked={effectiveApplyProvisionalCustoms}
                                     disabled={provisionalCustomsSuggested}
@@ -2240,9 +2250,9 @@ export default function Home() {
                                 />
 
                                 <OptionCard
-                                    title="Compactación"
-                                    description="Solicitud sin costo para revisar excedente volumétrico."
-                                    help="La compactación no une paquetes y no está garantizada. OWC indica que es una solicitud de revisión sin costo para intentar reducir excedente volumétrico. Debe prealertarse antes de que el paquete sea registrado en Miami. No debe reducir el cálculo automáticamente si no hay dimensiones compactadas confirmadas."
+                                    title="CompactaciÃƒÆ’Ã‚Â³n"
+                                    description="Solicitud sin costo para revisar excedente volumÃƒÆ’Ã‚Â©trico."
+                                    help="La compactaciÃƒÆ’Ã‚Â³n no une paquetes y no estÃƒÆ’Ã‚Â¡ garantizada. OWC indica que es una solicitud de revisiÃƒÆ’Ã‚Â³n sin costo para intentar reducir excedente volumÃƒÆ’Ã‚Â©trico. Debe prealertarse antes de que el paquete sea registrado en Miami. No debe reducir el cÃƒÆ’Ã‚Â¡lculo automÃƒÆ’Ã‚Â¡ticamente si no hay dimensiones compactadas confirmadas."
                                     helpAlign="end"
                                     checked={form.compactation_requested}
                                     onChange={(checked) =>
@@ -2253,7 +2263,7 @@ export default function Home() {
 
                             <div className="mt-5 grid gap-4 grid-cols-1 sm:grid-cols-2">
                                 <label className="space-y-2">
-                                    <FieldHelpLabel help="Hold mode solo afecta storage. General representa hold normal con storage después de 3 días. Prealertar hold representa una prealerta válida de reempaque emitida antes de la llegada del paquete a Miami.">
+                                    <FieldHelpLabel help="Hold mode solo afecta storage. General representa hold normal con storage despuÃƒÆ’Ã‚Â©s de 3 dÃƒÆ’Ã‚Â­as. Prealertar hold representa una prealerta vÃƒÆ’Ã‚Â¡lida de reempaque emitida antes de la llegada del paquete a Miami.">
                                         Modo de storage / hold
                                     </FieldHelpLabel>
                                     <select
@@ -2271,11 +2281,11 @@ export default function Home() {
                                 </label>
 
                                 <label className="space-y-2">
-                                    <FieldHelpLabel help="OWC indica que el hold está vigente por 3 días hábiles. Después de ese plazo, puede generar Storage Fee por día y por pie cúbico. Storage Fee es estimado. OWC puede ajustarlo o eliminarlo si el hold fue causado por error operativo o revisión del asesor.">
-                                        Días en hold
+                                    <FieldHelpLabel help="OWC indica que el hold estÃƒÆ’Ã‚Â¡ vigente por 3 dÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles. DespuÃƒÆ’Ã‚Â©s de ese plazo, puede generar Storage Fee por dÃƒÆ’Ã‚Â­a y por pie cÃƒÆ’Ã‚Âºbico. Storage Fee es estimado. OWC puede ajustarlo o eliminarlo si el hold fue causado por error operativo o revisiÃƒÆ’Ã‚Â³n del asesor.">
+                                        DÃƒÆ’Ã‚Â­as en hold
                                     </FieldHelpLabel>
                                     <input
-                                        aria-label="Días en hold"
+                                        aria-label="DÃƒÆ’Ã‚Â­as en hold"
                                         type="text"
                                         inputMode="numeric"
                                         className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500"
@@ -2311,12 +2321,12 @@ export default function Home() {
                                                 Prealerta de reempaque emitida a tiempo
                                             </span>
                                             <span className="mt-1 block leading-6">
-                                                Indica que la prealerta fue enviada antes de la llegada a Miami. Activa automáticamente Repack Fee. El courier validará si aplica la exoneración de storage.
+                                                Indica que la prealerta fue enviada antes de la llegada a Miami. Activa automÃƒÆ’Ã‚Â¡ticamente Repack Fee. El courier validarÃƒÆ’Ã‚Â¡ si aplica la exoneraciÃƒÆ’Ã‚Â³n de storage.
                                             </span>
                                         </span>
                                     </label>
                                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 italic">
-                                        <strong>Nota honesta:</strong> La exoneración de storage es una estimación. OWC validará si la prealerta fue emitida a tiempo para aplicarla.
+                                        <strong>Nota honesta:</strong> La exoneraciÃƒÆ’Ã‚Â³n de storage es una estimaciÃƒÆ’Ã‚Â³n. OWC validarÃƒÆ’Ã‚Â¡ si la prealerta fue emitida a tiempo para aplicarla.
                                     </div>
                                 </div>
                             )}
@@ -2339,12 +2349,12 @@ export default function Home() {
                                 {showMissingRepackPrealertWarning ? (
                                     <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
                                         <p className="font-semibold">
-                                            Falta confirmar prealerta válida
+                                            Falta confirmar prealerta vÃƒÆ’Ã‚Â¡lida
                                         </p>
                                         <p className="mt-1 leading-relaxed opacity-90">
                                             Para exonerar storage, debes confirmar que la prealerta
                                             de reempaque fue emitida antes de que el paquete fuera
-                                            recibido en Miami. Si el reempaque se solicitó después,
+                                            recibido en Miami. Si el reempaque se solicitÃƒÆ’Ã‚Â³ despuÃƒÆ’Ã‚Â©s,
                                             usa Hold normal.
                                         </p>
                                     </div>
@@ -2357,7 +2367,7 @@ export default function Home() {
                                         </p>
                                         <p className="mt-1 leading-relaxed opacity-90">
                                             Repack Fee es un cargo separado. Si el hold es general,
-                                            OWC puede cobrar Storage Fee después de los 3 días libres.
+                                            OWC puede cobrar Storage Fee despuÃƒÆ’Ã‚Â©s de los 3 dÃƒÆ’Ã‚Â­as libres.
                                         </p>
                                     </div>
                                 ) : null}
@@ -2368,25 +2378,25 @@ export default function Home() {
                                             Hold prolongado
                                         </p>
                                         <p className="mt-1 leading-relaxed opacity-90">
-                                            Un hold prolongado puede requerir revisión manual con
-                                            asesor. Esta app solo estima según reglas cargadas.
+                                            Un hold prolongado puede requerir revisiÃƒÆ’Ã‚Â³n manual con
+                                            asesor. Esta app solo estima segÃƒÆ’Ã‚Âºn reglas cargadas.
                                         </p>
                                     </div>
                                 ) : null}
 
                                 <details className="group rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                                     <summary className="cursor-pointer font-semibold outline-none flex items-center justify-between">
-                                        <span>Reglas automáticas activas</span>
-                                        <span className="transition-transform group-open:rotate-180">▼</span>
+                                        <span>Reglas automÃƒÆ’Ã‚Â¡ticas activas</span>
+                                        <span className="transition-transform group-open:rotate-180">ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¼</span>
                                     </summary>
                                     <div className="mt-2 pt-2 border-t border-amber-200/50">
-                                        <p className="mb-2 font-medium">Impuestos, repack y storage se sugieren según las condiciones de la cotización.</p>
+                                        <p className="mb-2 font-medium">Impuestos, repack y storage se sugieren segÃƒÆ’Ã‚Âºn las condiciones de la cotizaciÃƒÆ’Ã‚Â³n.</p>
                                         <p className="leading-relaxed opacity-90">
-                                            El impuesto provisional se sugiere automáticamente si el valor
-                                            declarado supera USD 200 o si hay 4 o más unidades del mismo
-                                            artículo. Repack fee es un cargo/servicio separado. El hold
+                                            El impuesto provisional se sugiere automÃƒÆ’Ã‚Â¡ticamente si el valor
+                                            declarado supera USD 200 o si hay 4 o mÃƒÆ’Ã‚Â¡s unidades del mismo
+                                            artÃƒÆ’Ã‚Â­culo. Repack fee es un cargo/servicio separado. El hold
                                             mode <strong>repack</strong> solo exonera storage por prealerta
-                                            válida; no decide si se cobra Repack Fee.
+                                            vÃƒÆ’Ã‚Â¡lida; no decide si se cobra Repack Fee.
                                         </p>
                                     </div>
                                 </details>
@@ -2409,9 +2419,9 @@ export default function Home() {
 
                         {resultFlags.hold_extension_warning ? (
                              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                                <p className="font-semibold">⚠️ Nota sobre Hold de Reempaque</p>
+                                <p className="font-semibold">ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Nota sobre Hold de Reempaque</p>
                                 <p className="mt-1 leading-relaxed opacity-90">
-                                    La exoneración está sujeta a validación del courier si la carga permanece varios días en Miami.
+                                    La exoneraciÃƒÆ’Ã‚Â³n estÃƒÆ’Ã‚Â¡ sujeta a validaciÃƒÆ’Ã‚Â³n del courier si la carga permanece varios dÃƒÆ’Ã‚Â­as en Miami.
                                 </p>
                              </div>
                         ) : null}
@@ -2432,7 +2442,7 @@ export default function Home() {
                                 disabled={loading || saveLoading || !canQuote}
                                 className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-lg font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {saveLoading ? "Guardando..." : "Guardar cotización"}
+                                {saveLoading ? "Guardando..." : "Guardar cotizaciÃƒÆ’Ã‚Â³n"}
                             </button>
 
                             <button
@@ -2456,7 +2466,7 @@ export default function Home() {
 
                         {!canQuote ? (
                             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                                Selecciona un courier y un servicio para calcular o guardar la cotización.
+                                Selecciona un courier y un servicio para calcular o guardar la cotizaciÃƒÆ’Ã‚Â³n.
                             </div>
                         ) : null}
 
@@ -2482,7 +2492,7 @@ export default function Home() {
                             <div className="mt-4 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm">
                                 <div className="mb-3">
                                     <h3 className="text-lg font-bold text-slate-900">
-                                        Cotización guardada
+                                        CotizaciÃƒÆ’Ã‚Â³n guardada
                                     </h3>
                                     <p className="mt-1 text-sm text-slate-600">
                                         Resumen del registro creado en el backend.
@@ -2490,7 +2500,7 @@ export default function Home() {
                                 </div>
 
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    <MiniSavedCard title="Código" value={savedQuote.shipment_code} />
+                                    <MiniSavedCard title="CÃƒÆ’Ã‚Â³digo" value={savedQuote.shipment_code} />
                                     <MiniSavedCard title="Shipment ID" value={savedQuote.shipment_id} />
                                     <MiniSavedCard title="Courier" value={savedQuote.courier} />
                                     <MiniSavedCard
@@ -2511,7 +2521,7 @@ export default function Home() {
                                             Tarifario OWC
                                         </h2>
                                         <p className="mt-1 text-xs sm:text-sm text-slate-600">
-                                            Tarifas cargadas automáticamente.
+                                            Tarifas cargadas automÃƒÆ’Ã‚Â¡ticamente.
                                         </p>
                                     </div>
 
@@ -2533,7 +2543,7 @@ export default function Home() {
                                     <>
                                         <div className="grid gap-4 md:grid-cols-2">
                                             <MetricCard
-                                                title="Aéreo"
+                                                title="AÃƒÆ’Ã‚Â©reo"
                                                 value={`${formatMoneyBs(
                                                     owcRules.rules.air_base_rate_ves,
                                                     0
@@ -2541,11 +2551,11 @@ export default function Home() {
                                                 subtitle="Tarifa activa"
                                             />
                                             <MetricCard
-                                                title="Marítimo"
+                                                title="MarÃƒÆ’Ã‚Â­timo"
                                                 value={`${formatMoneyBs(
                                                     owcRules.rules.sea_base_rate_ves,
                                                     0
-                                                )} / ft³`}
+                                                )} / ftÃƒâ€šÃ‚Â³`}
                                                 subtitle="Tarifa activa"
                                             />
                                             <MetricCard
@@ -2554,7 +2564,7 @@ export default function Home() {
                                                     owcRules.rules.correspondence_rate_ves,
                                                     0
                                                 )}
-                                                subtitle="Tarifa única"
+                                                subtitle="Tarifa ÃƒÆ’Ã‚Âºnica"
                                             />
                                             <MetricCard
                                                 title="Handling"
@@ -2565,7 +2575,7 @@ export default function Home() {
 
                                         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                                             <p>
-                                                <strong>Región:</strong> {regionLabel(owcRules.region)}
+                                                <strong>RegiÃƒÆ’Ã‚Â³n:</strong> {regionLabel(owcRules.region)}
                                             </p>
                                             <p className="mt-1">
                                                 <strong>Fuente:</strong> courier-rules/owc
@@ -2592,18 +2602,18 @@ export default function Home() {
 
                             {form.courier_code === "zoom" ? (
                                 <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                                    Cotización referencial Zoom. Valida el monto final con Zoom o un asesor autorizado antes de pagar.
+                                    CotizaciÃƒÆ’Ã‚Â³n referencial Zoom. Valida el monto final con Zoom o un asesor autorizado antes de pagar.
                                 </div>
                             ) : null}
 
                             {resultIsStale ? (
                                 <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                                     <p className="font-semibold">
-                                        Cotización pendiente de recalcular
+                                        CotizaciÃƒÆ’Ã‚Â³n pendiente de recalcular
                                     </p>
                                     <p className="mt-1 leading-6">
-                                        Cambiaste datos después del último cálculo. Presiona
-                                        “Calcular” para actualizar el resultado.
+                                        Cambiaste datos despuÃƒÆ’Ã‚Â©s del ÃƒÆ’Ã‚Âºltimo cÃƒÆ’Ã‚Â¡lculo. Presiona
+                                        ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œCalcularÃƒÂ¢Ã¢â€šÂ¬Ã‚Â para actualizar el resultado.
                                     </p>
                                 </div>
                             ) : null}
@@ -2614,12 +2624,12 @@ export default function Home() {
                                         <MetricCard
                                             title="Peso final"
                                             value={formatNumber(visibleMetrics.pesoFinal, 2, 2)}
-                                            subtitle={`Unidad de cobro: ${result.quote.charge_unit === "lb" ? "lb" : "ft³"
+                                            subtitle={`Unidad de cobro: ${result.quote.charge_unit === "lb" ? "lb" : "ftÃƒâ€šÃ‚Â³"
                                                 }`}
                                         />
                                         {!isZoom && (
                                             <MetricCard
-                                                title="Pie cúbico visible"
+                                                title="Pie cÃƒÆ’Ã‚Âºbico visible"
                                                 value={formatNumber(visibleMetrics.pieCubicoVisible, 2, 2)}
                                                 subtitle="Volumen visible/redondeado"
                                             />
@@ -2627,21 +2637,21 @@ export default function Home() {
                                         {!isZoom && (
                                             <MetricCard
                                                 title="Volumen real"
-                                                value={`${formatNumber(visibleMetrics.volumenReal, 2, 2)} ft³`}
-                                                subtitle="Volumen geométrico calculado"
+                                                value={`${formatNumber(visibleMetrics.volumenReal, 2, 2)} ftÃƒâ€šÃ‚Â³`}
+                                                subtitle="Volumen geomÃƒÆ’Ã‚Â©trico calculado"
                                             />
                                         )}
                                         {!isZoom && effectiveServiceType === "sea" && (
                                             <MetricCard
-                                                title="Base flete marítimo"
-                                                value={`${formatNumber(visibleMetrics.baseFleteMaritimo, 2, 2)} ft³`}
+                                                title="Base flete marÃƒÆ’Ã‚Â­timo"
+                                                value={`${formatNumber(visibleMetrics.baseFleteMaritimo, 2, 2)} ftÃƒâ€šÃ‚Â³`}
                                                 subtitle="Base usada para flete"
                                             />
                                         )}
                                         {!isZoom && (
                                             <MetricCard
                                                 title="Base storage"
-                                                value={`${formatNumber(visibleMetrics.baseStorage, 2, 2)} ft³`}
+                                                value={`${formatNumber(visibleMetrics.baseStorage, 2, 2)} ftÃƒâ€šÃ‚Â³`}
                                                 subtitle="Base usada para almacenaje"
                                             />
                                         )}
@@ -2662,8 +2672,8 @@ export default function Home() {
 
                                     <details className="group mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 transition-all">
                                         <summary className="cursor-pointer font-semibold text-slate-700 flex items-center justify-between outline-none">
-                                            <span>Ver detalle técnico</span>
-                                            <span className="transition-transform group-open:rotate-180">▼</span>
+                                            <span>Ver detalle tÃƒÆ’Ã‚Â©cnico</span>
+                                            <span className="transition-transform group-open:rotate-180">ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¼</span>
                                         </summary>
                                         <div className="mt-4 border-t border-slate-200 pt-4">
                                             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -2683,7 +2693,7 @@ export default function Home() {
 
                                             <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
                                                 <p>
-                                                    <strong>Base de cálculo:</strong> {displayBasis}
+                                                    <strong>Base de cÃƒÆ’Ã‚Â¡lculo:</strong> {displayBasis}
                                                 </p>
                                                 <p>
                                                     <strong>Modo de storage / hold:</strong>{" "}
@@ -2691,16 +2701,16 @@ export default function Home() {
                                                 </p>
                                                 <p>
                                                     <strong>Volumen real:</strong>{" "}
-                                                    {formatNumber(safeNumber(resultMetrics.raw_volume_ft3), 2, 2)} ft³
+                                                    {formatNumber(safeNumber(resultMetrics.raw_volume_ft3), 2, 2)} ftÃƒâ€šÃ‚Â³
                                                 </p>
                                                 <p>
                                                     <strong>Volumen visible:</strong>{" "}
-                                                    {formatNumber(safeNumber(resultMetrics.display_volume_ft3), 2, 2)} ft³
+                                                    {formatNumber(safeNumber(resultMetrics.display_volume_ft3), 2, 2)} ftÃƒâ€šÃ‚Â³
                                                 </p>
                                                 {effectiveServiceType === "sea" && (
                                                     <p>
-                                                        <strong>Base flete marítimo:</strong>{" "}
-                                                        {formatNumber(safeNumber(resultMetrics.sea_freight_volume_ft3), 2, 2)} ft³
+                                                        <strong>Base flete marÃƒÆ’Ã‚Â­timo:</strong>{" "}
+                                                        {formatNumber(safeNumber(resultMetrics.sea_freight_volume_ft3), 2, 2)} ftÃƒâ€šÃ‚Â³
                                                     </p>
                                                 )}
                                                 <p>
@@ -2710,7 +2720,7 @@ export default function Home() {
                                                         2,
                                                         2
                                                     )}{" "}
-                                                    ft³
+                                                    ftÃƒâ€šÃ‚Â³
                                                 </p>
                                                 <p>
                                                     <strong>Trackings originales:</strong> {resultMetrics.original_tracking_count ?? form.tracking_count}
@@ -2723,34 +2733,34 @@ export default function Home() {
                                             {showStorageFormula && storageFormula ? (
                                                 <div className="mt-5 rounded-2xl border border-cyan-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
                                                     <p className="font-semibold text-slate-950">
-                                                        Fórmula de Storage estimado
+                                                        FÃƒÆ’Ã‚Â³rmula de Storage estimado
                                                     </p>
                                                     <div className="mt-3 grid gap-2 md:grid-cols-2">
                                                         <p>
                                                             <strong>Hold ingresado:</strong>{" "}
-                                                            {formatNumber(storageFormula.holdDays, 0, 0)} días
+                                                            {formatNumber(storageFormula.holdDays, 0, 0)} dÃƒÆ’Ã‚Â­as
                                                         </p>
                                                         <p>
-                                                            <strong>Días hábiles libres OWC:</strong>{" "}
+                                                            <strong>DÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles libres OWC:</strong>{" "}
                                                             {formatNumber(storageFormula.freeDays, 0, 0)}
                                                         </p>
                                                         <p>
-                                                            <strong>Días hábiles cobrables estimados:</strong>{" "}
+                                                            <strong>DÃƒÆ’Ã‚Â­as hÃƒÆ’Ã‚Â¡biles cobrables estimados:</strong>{" "}
                                                             {formatNumber(storageFormula.chargedDays, 0, 0)}
                                                         </p>
                                                         {storageFormula.exemptionApplied ? (
                                                             <p>
-                                                                <strong>Días cobrados por storage:</strong>{" "}
-                                                                0 por prealerta válida
+                                                                <strong>DÃƒÆ’Ã‚Â­as cobrados por storage:</strong>{" "}
+                                                                0 por prealerta vÃƒÆ’Ã‚Â¡lida
                                                         </p>
                                                         ) : null}
                                                         <p>
                                                             <strong>Base storage:</strong>{" "}
-                                                            {formatNumber(storageFormula.baseFt3, 2, 2)} ft³
+                                                            {formatNumber(storageFormula.baseFt3, 2, 2)} ftÃƒâ€šÃ‚Â³
                                                         </p>
                                                         <p>
-                                                            <strong>Mínimo storage:</strong>{" "}
-                                                            {formatNumber(storageFormula.minFt3, 2, 2)} ft³
+                                                            <strong>MÃƒÆ’Ã‚Â­nimo storage:</strong>{" "}
+                                                            {formatNumber(storageFormula.minFt3, 2, 2)} ftÃƒâ€šÃ‚Â³
                                                         </p>
                                                         <p>
                                                             <strong>Tarifa storage:</strong>{" "}
@@ -2767,8 +2777,8 @@ export default function Home() {
                                                         </p>
                                                     </div>
                                                     <p className="mt-3 text-xs leading-5 text-slate-500">
-                                                        Estimación referencial: OWC puede ajustar o eliminar este
-                                                        cargo si el hold fue causado por error operativo o revisión
+                                                        EstimaciÃƒÆ’Ã‚Â³n referencial: OWC puede ajustar o eliminar este
+                                                        cargo si el hold fue causado por error operativo o revisiÃƒÆ’Ã‚Â³n
                                                         del asesor.
                                                     </p>
                                                 </div>
@@ -2783,9 +2793,9 @@ export default function Home() {
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zm3.75 11.625a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-lg font-bold text-slate-900">Tu cotización aparecerá aquí</h3>
+                                    <h3 className="text-lg font-bold text-slate-900">Tu cotizaciÃƒÆ’Ã‚Â³n aparecerÃƒÆ’Ã‚Â¡ aquÃƒÆ’Ã‚Â­</h3>
                                     <p className="mt-2 max-w-sm text-sm text-slate-500">
-                                        Llena el formulario y presiona Calcular. Aquí verás el peso final, volumen visible, flete, desglose y total estimado.
+                                        Llena el formulario y presiona Calcular. AquÃƒÆ’Ã‚Â­ verÃƒÆ’Ã‚Â¡s el peso final, volumen visible, flete, desglose y total estimado.
                                     </p>
                                 </div>
                             )}
@@ -2797,7 +2807,7 @@ export default function Home() {
                                     <div>
                                         <h3 className="text-xl sm:text-2xl font-bold text-slate-950">Desglose</h3>
                                         <p className="mt-1 text-sm text-slate-600">
-                                            Cada fila se resalta según el tipo de cargo y si tiene monto aplicado.
+                                            Cada fila se resalta segÃƒÆ’Ã‚Âºn el tipo de cargo y si tiene monto aplicado.
                                         </p>
                                     </div>
 
@@ -2858,7 +2868,7 @@ export default function Home() {
                                             tone="amber"
                                         />
                                         <BreakdownRow
-                                            label="Repack fee único estimado"
+                                            label="Repack fee ÃƒÆ’Ã‚Âºnico estimado"
                                             ves={resultBreakdown.repack_ves}
                                             usd={resultBreakdown.repack_usd}
                                             tone="rose"
@@ -2876,7 +2886,7 @@ export default function Home() {
                                             tone="rose"
                                         />
                                         <BreakdownRow
-                                            label="Compactación"
+                                            label="CompactaciÃƒÆ’Ã‚Â³n"
                                             ves={resultBreakdown.compactation_fee_ves}
                                             usd={resultBreakdown.compactation_fee_usd}
                                             tone="slate"
@@ -2900,7 +2910,7 @@ export default function Home() {
                                     <MetricCard
                                         title="Total VES"
                                         value={formatMoneyBs(result.quote.total_ves, 2)}
-                                        subtitle="Conversión con tasa BCV actual"
+                                        subtitle="ConversiÃƒÆ’Ã‚Â³n con tasa BCV actual"
                                         accent="accent"
                                     />
                                 </div>
@@ -2924,31 +2934,31 @@ export default function Home() {
                                 {form.courier_code === "" && (
                             <>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Cómo empezar</h3>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-3">CÃƒÆ’Ã‚Â³mo empezar</h3>
                                     <ul className="space-y-3 text-sm text-slate-600">
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">•</span>
-                                            <span>La herramienta es referencial para estimación de costos.</span>
+                                            <span className="font-bold text-slate-900">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢</span>
+                                            <span>La herramienta es referencial para estimaciÃƒÆ’Ã‚Â³n de costos.</span>
                                         </li>
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">•</span>
+                                            <span className="font-bold text-slate-900">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢</span>
                                             <span>Primero selecciona un courier del listado para ver sus opciones.</span>
                                         </li>
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">•</span>
+                                            <span className="font-bold text-slate-900">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢</span>
                                             <span>Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.</span>
                                         </li>
                                         <li className="flex gap-2">
-                                            <span className="font-bold text-slate-900">•</span>
-                                            <span>No todas las opciones de cálculo aplican a todos los couriers.</span>
+                                            <span className="font-bold text-slate-900">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢</span>
+                                            <span>No todas las opciones de cÃƒÆ’Ã‚Â¡lculo aplican a todos los couriers.</span>
                                         </li>
                                     </ul>
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Información importante</h3>
+                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">InformaciÃƒÆ’Ã‚Â³n importante</h3>
                                     <ul className="space-y-3 text-sm text-slate-600 list-disc pl-4">
                                         <li>Los montos son estimaciones y deben ser validados al recibir la carga.</li>
-                                        <li>La tasa BCV usada puede variar según el día de procesamiento.</li>
+                                        <li>La tasa BCV usada puede variar segÃƒÆ’Ã‚Âºn el dÃƒÆ’Ã‚Â­a de procesamiento.</li>
                                         <li>Ciertos cargos dependen de regulaciones aduanales vigentes.</li>
                                     </ul>
                                 </div>
@@ -2960,18 +2970,18 @@ export default function Home() {
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 mb-3">Reglas OWC</h3>
                                     <ul className="space-y-3 text-sm text-slate-600">
-                                        <li><span className="font-bold">Entrega:</span> Office es la única modalidad calculada actualmente.</li>
-                                        <li><span className="font-bold">Flete:</span> Aéreo y marítimo usan las tarifas activas del sistema.</li>
-                                        <li><span className="font-bold">Handling:</span> Puede aplicar por tracking/paquete recibido en almacén.</li>
+                                        <li><span className="font-bold">Entrega:</span> Office es la ÃƒÆ’Ã‚Âºnica modalidad calculada actualmente.</li>
+                                        <li><span className="font-bold">Flete:</span> AÃƒÆ’Ã‚Â©reo y marÃƒÆ’Ã‚Â­timo usan las tarifas activas del sistema.</li>
+                                        <li><span className="font-bold">Handling:</span> Puede aplicar por tracking/paquete recibido en almacÃƒÆ’Ã‚Â©n.</li>
                                         <li><span className="font-bold">Repack Fee:</span> Cargo de servicio separado del flete ($5).</li>
-                                        <li><span className="font-bold">Prealerta hold:</span> Puede consolidar handling y exonerar storage si la prealerta fue emitida a tiempo, sujeto a validación del courier.</li>
+                                        <li><span className="font-bold">Prealerta hold:</span> Puede consolidar handling y exonerar storage si la prealerta fue emitida a tiempo, sujeto a validaciÃƒÆ’Ã‚Â³n del courier.</li>
                                     </ul>
                                 </div>
                                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
                                     <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide mb-3">Servicios Adicionales</h3>
                                     <ul className="space-y-3 text-sm text-amber-900/90 list-disc pl-4">
-                                        <li><strong>Storage:</strong> Depende de días en hold; sujeto a validación de OWC.</li>
-                                        <li><strong>Seguro:</strong> Opcional (5%) para protección de mercancía.</li>
+                                        <li><strong>Storage:</strong> Depende de dÃƒÆ’Ã‚Â­as en hold; sujeto a validaciÃƒÆ’Ã‚Â³n de OWC.</li>
+                                        <li><strong>Seguro:</strong> Opcional (5%) para protecciÃƒÆ’Ã‚Â³n de mercancÃƒÆ’Ã‚Â­a.</li>
                                         <li><strong>Compra por encargo:</strong> Servicio separado (Personal Shopper) con tarifas propias.</li>
                                     </ul>
                                 </div>
@@ -2983,17 +2993,17 @@ export default function Home() {
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 mb-3">Reglas de Zoom Casillero Internacional</h3>
                                     <ul className="space-y-3 text-sm text-slate-600">
-                                        <li>Esta cotización es referencial para estimar envíos con Zoom Casillero Internacional.</li>
+                                        <li>Esta cotizaciÃƒÆ’Ã‚Â³n es referencial para estimar envÃƒÆ’Ã‚Â­os con Zoom Casillero Internacional.</li>
                                         <li>La modalidad disponible en la app actualmente es <span className="font-bold">Office</span>.</li>
-                                        <li>Ingresa el peso físico en kg y selecciona si deseas consolidar encomiendas cuando aplique.</li>
+                                        <li>Ingresa el peso fÃƒÆ’Ã‚Â­sico en kg y selecciona si deseas consolidar encomiendas cuando aplique.</li>
                                         <li>La tarifa final debe validarse con Zoom o con un asesor autorizado antes de pagar.</li>
-                                        <li>Algunas condiciones como protección, consolidación o cargos administrativos pueden depender del caso real.</li>
+                                        <li>Algunas condiciones como protecciÃƒÆ’Ã‚Â³n, consolidaciÃƒÆ’Ã‚Â³n o cargos administrativos pueden depender del caso real.</li>
                                     </ul>
                                 </div>
                                 <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
                                     <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-3">Consideraciones</h3>
                                     <ul className="space-y-3 text-sm text-blue-900/90 list-disc pl-4">
-                                        <li>Usa esta calculadora como estimación previa.</li>
+                                        <li>Usa esta calculadora como estimaciÃƒÆ’Ã‚Â³n previa.</li>
                                         <li>Verifica siempre el monto final con Zoom.</li>
                                         <li>Si la carga tiene condiciones especiales, consulta con un asesor.</li>
                                     </ul>
@@ -3009,10 +3019,10 @@ export default function Home() {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left text-sm text-slate-600">
                     <div>
                         <p className="font-semibold text-slate-900">
-                            © 2026 Vzla Cargo Hub. Desarrollado por Lorenzo Valentin Roca Burmistrow.
+                            Ãƒâ€šÃ‚Â© 2026 Vzla Cargo Hub. Desarrollado por Lorenzo Valentin Roca Burmistrow.
                         </p>
                         <p className="mt-1">
-                            Herramienta referencial para estimación de cotizaciones. Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.
+                            Herramienta referencial para estimaciÃƒÆ’Ã‚Â³n de cotizaciones. Las tarifas finales pueden ser ajustadas por el courier o asesor autorizado.
                         </p>
                     </div>
                     <button
@@ -3034,10 +3044,10 @@ export default function Home() {
                             </svg>
                         </div>
                         <h3 className="mb-2 text-center text-xl font-bold text-slate-900">
-                            Guardar cotizaciones estará disponible pronto
+                            Guardar cotizaciones estarÃƒÆ’Ã‚Â¡ disponible pronto
                         </h3>
                         <p className="mb-6 text-center text-sm leading-relaxed text-slate-600">
-                            Esta función estará disponible cuando se active el sistema de cuentas. Pronto podrás iniciar sesión, guardar cotizaciones, organizarlas por courier, fecha y descargarlas desde un panel personal.
+                            Esta funciÃƒÆ’Ã‚Â³n estarÃƒÆ’Ã‚Â¡ disponible cuando se active el sistema de cuentas. Pronto podrÃƒÆ’Ã‚Â¡s iniciar sesiÃƒÆ’Ã‚Â³n, guardar cotizaciones, organizarlas por courier, fecha y descargarlas desde un panel personal.
                         </p>
                         <button
                             type="button"
@@ -3089,7 +3099,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
         
         for (const file of newFiles) {
             if (validFiles.length >= 7) {
-                error = "Máximo 7 archivos permitidos.";
+                error = "MÃƒÆ’Ã‚Â¡ximo 7 archivos permitidos.";
                 break;
             }
             if (file.size > 8 * 1024 * 1024) {
@@ -3098,7 +3108,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
             }
             const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
             if (!allowedExtensions.includes(ext)) {
-                error = `La extensión ${ext} no está permitida.`;
+                error = `La extensiÃƒÆ’Ã‚Â³n ${ext} no estÃƒÆ’Ã‚Â¡ permitida.`;
                 continue;
             }
             validFiles.push(file);
@@ -3106,7 +3116,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
         
         const totalSize = validFiles.reduce((acc, f) => acc + f.size, 0);
         if (totalSize > 20 * 1024 * 1024) {
-            error = "El tamaño total supera los 20MB permitidos.";
+            error = "El tamaÃƒÆ’Ã‚Â±o total supera los 20MB permitidos.";
             validFiles = files; // revert
         }
         
@@ -3165,14 +3175,14 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
             
             if (!response.ok) {
                 if (response.status === 503) {
-                    throw new Error("El servicio de feedback no está disponible o no está configurado. Intenta más tarde.");
+                    throw new Error(data.detail || "El servicio de feedback no estÃƒÆ’Ã‚Â¡ disponible o no estÃƒÆ’Ã‚Â¡ configurado. Intenta mÃƒÆ’Ã‚Â¡s tarde.");
                 }
                 if (response.status === 429) {
                     const retryAfter = response.headers.get("Retry-After");
                     if (retryAfter) {
                         throw new Error(`Demasiadas solicitudes. Intenta nuevamente en ${retryAfter} segundos.`);
                     }
-                    throw new Error("Demasiadas solicitudes. Intenta nuevamente más tarde.");
+                    throw new Error("Demasiadas solicitudes. Intenta nuevamente mÃƒÆ’Ã‚Â¡s tarde.");
                 }
                 throw new Error(data.detail || "Error al enviar la sugerencia.");
             }
@@ -3184,7 +3194,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
             
         } catch (error) {
             setStatus("error");
-            setErrorMsg(error instanceof Error ? error.message : "Ocurrió un error inesperado.");
+            setErrorMsg(error instanceof Error ? error.message : "OcurriÃƒÆ’Ã‚Â³ un error inesperado.");
         }
     };
 
@@ -3198,7 +3208,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
                         className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"
                         disabled={status === "loading"}
                     >
-                        ✕
+                        ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢
                     </button>
                 </div>
                 
@@ -3206,9 +3216,9 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
                 {status === "success" ? (
                     <div className="text-center py-8 h-full flex flex-col justify-center items-center">
                         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                            ✓
+                            ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">¡Gracias por tu mensaje!</h3>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Ãƒâ€šÃ‚Â¡Gracias por tu mensaje!</h3>
                         <p className="text-slate-600 select-none">{message}</p>
                         <button
                             onClick={onClose}
@@ -3251,7 +3261,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
                             >
                                 <option value="Sugerencia de mejora">Sugerencia de mejora</option>
                                 <option value="Error o bug">Error o bug</option>
-                                <option value="Problema con una cotización">Problema con una cotización</option>
+                                <option value="Problema con una cotizaciÃƒÆ’Ã‚Â³n">Problema con una cotizaciÃƒÆ’Ã‚Â³n</option>
                                 <option value="Problema visual / responsive">Problema visual / responsive</option>
                                 <option value="Solicitud de nuevo courier">Solicitud de nuevo courier</option>
                                 <option value="Problema con tarifas">Problema con tarifas</option>
@@ -3303,10 +3313,10 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
                                 maxLength={7000}
                                 rows={5}
                                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                                placeholder="Describe aquí tu sugerencia, problema o solicitud (mín. 15 caracteres)..."
+                                placeholder="Describe aquÃƒÆ’Ã‚Â­ tu sugerencia, problema o solicitud (mÃƒÆ’Ã‚Â­n. 15 caracteres)..."
                             ></textarea>
                             <p className="mt-1 text-xs text-amber-600 font-medium">
-                                No incluyas contraseñas, datos bancarios ni información sensible.
+                                No incluyas contraseÃƒÆ’Ã‚Â±as, datos bancarios ni informaciÃƒÆ’Ã‚Â³n sensible.
                             </p>
                         </div>
                         
@@ -3324,7 +3334,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
                                             onClick={() => removeFile(i)}
                                             className="ml-1 text-red-500 hover:text-red-700 font-bold"
                                         >
-                                            ✕
+                                            ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢
                                         </button>
                                     </div>
                                 ))}
@@ -3346,7 +3356,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
                                 accept=".png,.jpg,.jpeg,.webp,.pdf,.xls,.xlsx,.csv"
                             />
                             <p className="mt-2 text-xs text-slate-500">
-                                Máximo 7 archivos, 8MB c/u y 20MB en total. Formatos: imágenes, pdf, excel, csv.
+                                MÃƒÆ’Ã‚Â¡ximo 7 archivos, 8MB c/u y 20MB en total. Formatos: imÃƒÆ’Ã‚Â¡genes, pdf, excel, csv.
                             </p>
                         </div>
                     </form>
